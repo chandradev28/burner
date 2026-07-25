@@ -68,7 +68,7 @@ ThemeData buildBurnerTheme() {
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
     ),
-    dialogTheme: DialogTheme(
+    dialogTheme: DialogThemeData(
       backgroundColor: BurnerColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     ),
@@ -82,7 +82,7 @@ ThemeData buildBurnerTheme() {
       ),
     ),
     dividerColor: BurnerColors.stroke,
-    tabBarTheme: const TabBarTheme(
+    tabBarTheme: const TabBarThemeData(
       labelColor: BurnerColors.textPrimary,
       unselectedLabelColor: BurnerColors.textSecondary,
       indicatorColor: BurnerColors.purple,
