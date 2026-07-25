@@ -50,14 +50,15 @@ class SourceAggregator {
   /// which keeps the picker unified while staying honest about playback.
   static List<StreamItem> cloudStreamStreams({
     required List<CsRepo> repos,
-    required Meta meta,
+    required MetaItem meta,
   }) {
     final isSeries = meta.type.toLowerCase() != 'movie';
     final streams = <StreamItem>[];
 
     for (final repo in repos) {
       for (final plugin in repo.activePlugins) {
-        final supports = isSeries ? plugin.supportsSeries : plugin.supportsMovies;
+        final supports =
+            isSeries ? plugin.supportsSeries : plugin.supportsMovies;
         if (!supports) continue;
         final lang = plugin.language?.toUpperCase();
         streams.add(StreamItem(
@@ -85,7 +86,8 @@ class SourceAggregator {
     final seen = <String>{};
     for (final group in groups) {
       for (final s in group) {
-        final key = '${s.sourceKind}|${s.url ?? s.externalUrl ?? s.infoHash ?? s.title ?? s.name}';
+        final key =
+            '${s.sourceKind}|${s.url ?? s.externalUrl ?? s.infoHash ?? s.title ?? s.name}';
         if (seen.add(key)) all.add(s);
       }
     }
