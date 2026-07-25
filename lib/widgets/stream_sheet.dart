@@ -6,8 +6,10 @@ import '../core/theme.dart';
 import '../models/meta.dart';
 import '../models/stream_item.dart';
 import '../providers/addon_provider.dart';
+import '../providers/sources_provider.dart';
 import '../screens/player_screen.dart';
 import '../services/addon_client.dart';
+import '../services/source_aggregator.dart';
 
 /// Opens the stream picker bottom sheet for a movie ([videoId] == meta.id)
 /// or an episode ([videoId] == "ttXXXX:season:episode").
@@ -54,12 +56,32 @@ class _StreamSheetState extends State<StreamSheet> {
   @override
   void initState() {
     super.initState();
+    _future = _loadCombined();
+  }
+
+  /// Queries every enabled source in parallel and merges the results.
+  Future<List<StreamItem>> _loadCombined() async {
     final addons = context.read<AddonProvider>().addons;
-    _future = AddonClient.resolveStreams(
-      addons,
-      widget.meta.type,
-      widget.videoId,
+    final sources = context.read<SourcesProvider>();
+
+    final addonFuture = sources.addonsEnabled
+        ? AddonClient.resolveStreams(addons, widget.meta.type, widget.videoId)
+            .catchError((_) => <StreamItem>[])
+        : Future.value(<StreamItem>[]);
+
+    final telegramFuture = SourceAggregator.telegramStreams(
+      config: sources.telegram,
+      index: sources.telegramIndex,
+      query: widget.meta.name,
+    ).catchError((_) => <StreamItem>[]);
+
+    final cloudStream = SourceAggregator.cloudStreamStreams(
+      repos: sources.activeRepos,
+      meta: widget.meta,
     );
+
+    final results = await Future.wait([addonFuture, telegramFuture]);
+    return SourceAggregator.combine([results[0], results[1], cloudStream]);
   }
 
   void _play(StreamItem stream) {
@@ -149,22 +171,43 @@ class _StreamSheetState extends State<StreamSheet> {
                     separatorBuilder: (_, __) => const SizedBox(height: 6),
                     itemBuilder: (context, index) {
                       final stream = streams[index];
-                      return _StreamTile(
-                        stream: stream,
-                        onTap: () {
-                          if (stream.isPlayable) {
-                            _play(stream);
-                          } else if (stream.isExternal || stream.isYouTube) {
-                            _openExternal(stream);
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                    'This is a torrent-only stream. Install a debrid/resolver addon to make it playable.'),
+                      final showHeader = index == 0 ||
+                          streams[index - 1].sourceLabel != stream.sourceLabel;
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (showHeader)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(6, 10, 6, 6),
+                              child: Text(
+                                stream.sourceLabel.toUpperCase(),
+                                style: const TextStyle(
+                                  fontSize: 10.5,
+                                  letterSpacing: 1.2,
+                                  fontWeight: FontWeight.w800,
+                                  color: BurnerColors.textSecondary,
+                                ),
                               ),
-                            );
-                          }
-                        },
+                            ),
+                          _StreamTile(
+                            stream: stream,
+                            onTap: () {
+                              if (stream.isPlayable) {
+                                _play(stream);
+                              } else if (stream.isExternal ||
+                                  stream.isYouTube) {
+                                _openExternal(stream);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        'This is a torrent-only stream. Install a debrid/resolver addon to make it playable.'),
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                        ],
                       );
                     },
                   );
@@ -270,15 +313,15 @@ class _EmptyStreams extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               error ? 'Could not load streams.' : 'No streams found.',
-              style: const TextStyle(
-                  fontSize: 15, fontWeight: FontWeight.w700),
+              style:
+                  const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 6),
             const Text(
-              'Install a streaming addon in Profile \u2192 Manage addons to get playable sources for this title.',
+              'Add a streaming addon, a CloudStream repo or Telegram in Profile \u2192 Content discovery to get sources for this title.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                  color: BurnerColors.textSecondary, fontSize: 13),
+              style:
+                  TextStyle(color: BurnerColors.textSecondary, fontSize: 13),
             ),
           ],
         ),

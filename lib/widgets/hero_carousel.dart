@@ -3,13 +3,14 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../core/responsive.dart';
 import '../core/theme.dart';
 import '../models/meta.dart';
 import '../screens/detail_screen.dart';
 import 'common.dart';
 
 /// Auto-advancing featured carousel with backdrop art, gradient fade,
-/// title/logo and Play / More info actions — HBO Max hero style.
+/// title/logo and Play / More info actions \u2014 HBO Max hero style.
 class HeroCarousel extends StatefulWidget {
   final List<MetaItem> items;
 
@@ -62,7 +63,9 @@ class _HeroCarouselState extends State<HeroCarousel> {
   @override
   Widget build(BuildContext context) {
     if (widget.items.isEmpty) return const SizedBox.shrink();
-    final height = MediaQuery.of(context).size.height * 0.56;
+    final r = Responsive.of(context);
+    final height = r.heroHeight;
+    final titleSize = r.isSmall ? 25.0 : (r.isTablet ? 38.0 : 30.0);
 
     return SizedBox(
       height: height,
@@ -96,26 +99,29 @@ class _HeroCarouselState extends State<HeroCarousel> {
                           BoxDecoration(gradient: BurnerColors.heroOverlay),
                     ),
                     Positioned(
-                      left: 16,
-                      right: 16,
+                      left: r.gutter,
+                      right: r.gutter,
                       bottom: 52,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           if (item.logo != null)
                             ConstrainedBox(
-                              constraints: const BoxConstraints(
-                                  maxHeight: 72, maxWidth: 240),
+                              constraints: BoxConstraints(
+                                maxHeight: height * 0.2,
+                                maxWidth: r.width * 0.66,
+                              ),
                               child: CachedNetworkImage(
                                 imageUrl: item.logo!,
                                 fit: BoxFit.contain,
                                 alignment: Alignment.bottomLeft,
                                 errorWidget: (_, __, ___) =>
-                                    _titleText(item),
+                                    _titleText(item, titleSize),
                               ),
                             )
                           else
-                            _titleText(item),
+                            _titleText(item, titleSize),
                           const SizedBox(height: 8),
                           Text(
                             [
@@ -124,14 +130,18 @@ class _HeroCarouselState extends State<HeroCarousel> {
                                 '\u2605 ${item.imdbRating}',
                               ...item.genres.take(2),
                             ].join('  \u2022  '),
-                            style: const TextStyle(
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
                               color: BurnerColors.textSecondary,
-                              fontSize: 13,
+                              fontSize: r.isSmall ? 12 : 13,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
                           const SizedBox(height: 14),
-                          Row(
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 8,
                             children: [
                               GradientButton(
                                 label: 'Play',
@@ -139,7 +149,6 @@ class _HeroCarouselState extends State<HeroCarousel> {
                                 onPressed: () =>
                                     _openDetail(item, autoPlay: true),
                               ),
-                              const SizedBox(width: 10),
                               GhostButton(
                                 label: 'More info',
                                 icon: Icons.info_outline_rounded,
@@ -184,16 +193,16 @@ class _HeroCarouselState extends State<HeroCarousel> {
     );
   }
 
-  Widget _titleText(MetaItem item) {
+  Widget _titleText(MetaItem item, double size) {
     return Text(
       item.name,
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
-      style: const TextStyle(
-        fontSize: 30,
+      style: TextStyle(
+        fontSize: size,
         fontWeight: FontWeight.w800,
         height: 1.05,
-        shadows: [Shadow(color: Colors.black87, blurRadius: 12)],
+        shadows: const [Shadow(color: Colors.black87, blurRadius: 12)],
       ),
     );
   }
