@@ -13,6 +13,13 @@ class StreamItem {
   /// Filled in after fetching, so the UI can group streams by addon.
   final String addonName;
 
+  /// Which content source produced this stream: 'stremio', 'cloudstream'
+  /// or 'telegram'. Used to group and label combined results.
+  final String sourceKind;
+
+  /// Human readable source name (addon name, CS provider, channel...).
+  final String sourceName;
+
   const StreamItem({
     this.name,
     this.title,
@@ -24,10 +31,14 @@ class StreamItem {
     this.fileIdx,
     this.behaviorHints = const {},
     this.addonName = '',
+    this.sourceKind = 'stremio',
+    this.sourceName = '',
   });
 
   factory StreamItem.fromJson(Map<String, dynamic> json,
-      {String addonName = ''}) {
+      {String addonName = '',
+      String sourceKind = 'stremio',
+      String sourceName = ''}) {
     return StreamItem(
       name: json['name']?.toString(),
       title: json['title']?.toString(),
@@ -43,6 +54,8 @@ class StreamItem {
           ? (json['behaviorHints'] as Map).cast<String, dynamic>()
           : const {},
       addonName: addonName,
+      sourceKind: sourceKind,
+      sourceName: sourceName.isNotEmpty ? sourceName : addonName,
     );
   }
 
@@ -63,5 +76,17 @@ class StreamItem {
     return name?.trim() ?? 'Stream';
   }
 
-  String get badge => (name ?? addonName).trim();
+  String get badge => (name ?? sourceName).trim();
+
+  /// Short label for the source group header in the stream picker.
+  String get sourceLabel {
+    switch (sourceKind) {
+      case 'cloudstream':
+        return 'CloudStream';
+      case 'telegram':
+        return 'Telegram';
+      default:
+        return 'Addons';
+    }
+  }
 }
