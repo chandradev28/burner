@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../core/responsive.dart';
 import '../core/theme.dart';
 import '../models/meta.dart';
 import '../providers/addon_provider.dart';
@@ -126,16 +127,17 @@ class _SearchScreenState extends State<SearchScreen> {
       return _SearchHint(
         icon: Icons.search_off_rounded,
         title: 'No results for \u201c$_query\u201d',
-        subtitle: 'Try a different title or install more addons.',
+        subtitle: 'Try a different title or add more sources.',
       );
     }
+    final r = Responsive.of(context);
     return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
+      padding: EdgeInsets.fromLTRB(r.gutter, 12, r.gutter, r.bottomSafePadding),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: r.gridColumns,
         mainAxisSpacing: 14,
         crossAxisSpacing: 10,
-        childAspectRatio: 2 / 3.55,
+        childAspectRatio: 2 / 3.35,
       ),
       itemCount: _results.length,
       itemBuilder: (context, index) => PosterCard(

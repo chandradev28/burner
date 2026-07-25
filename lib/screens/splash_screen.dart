@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../core/constants.dart';
 import '../providers/addon_provider.dart';
 import '../providers/library_provider.dart';
+import '../providers/sources_provider.dart';
 import '../widgets/common.dart';
 import 'main_shell.dart';
 
@@ -31,9 +32,11 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _boot() async {
     final addons = context.read<AddonProvider>();
     final library = context.read<LibraryProvider>();
+    final sources = context.read<SourcesProvider>();
     await Future.wait([
       addons.init(),
       library.init(),
+      sources.init(),
       Future.delayed(const Duration(milliseconds: 1200)),
     ]);
     if (!mounted) return;

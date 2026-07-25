@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../core/constants.dart';
+import '../core/responsive.dart';
 import '../core/theme.dart';
 import '../providers/addon_provider.dart';
 import '../providers/library_provider.dart';
+import '../providers/sources_provider.dart';
 import '../widgets/common.dart';
-import 'addons_screen.dart';
+import 'content_discovery_screen.dart';
 
-/// Profile & settings: addon management, data controls, about.
+/// Profile & settings: content discovery, data controls, about.
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
@@ -16,6 +18,8 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final addonCount = context.watch<AddonProvider>().addons.length;
     final library = context.watch<LibraryProvider>();
+    final sources = context.watch<SourcesProvider>();
+    final r = Responsive.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -24,7 +28,7 @@ class ProfileScreen extends StatelessWidget {
             style: TextStyle(fontWeight: FontWeight.w800)),
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+        padding: EdgeInsets.fromLTRB(r.gutter, 8, r.gutter, r.bottomSafePadding),
         children: [
           // Profile header
           Row(
@@ -62,14 +66,21 @@ class ProfileScreen extends StatelessWidget {
           ),
           const SizedBox(height: 22),
 
-          _SectionLabel('Content'),
+          _SectionLabel('Content discovery'),
           _SettingsTile(
-            icon: Icons.extension_outlined,
-            title: 'Manage addons',
-            subtitle: 'Install or remove Stremio addons',
+            icon: Icons.travel_explore_rounded,
+            title: 'Content discovery',
+            subtitle:
+                'Addons \u2022 CloudStream repos \u2022 Telegram \u2022 combined results',
             onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const AddonsScreen()),
+              MaterialPageRoute(builder: (_) => const ContentDiscoveryScreen()),
             ),
+          ),
+          _DiscoverySummary(
+            addons: addonCount,
+            repos: sources.repos.length,
+            plugins: sources.pluginCount,
+            telegram: sources.telegram.enabled && sources.telegram.isConfigured,
           ),
           const SizedBox(height: 18),
 
@@ -116,7 +127,7 @@ class ProfileScreen extends StatelessWidget {
               ),
               children: const [
                 Text(
-                  'A movies & TV app powered by Stremio addons. Burner hosts no content \u2014 catalogs, metadata and streams come from the addons you install. Only use addons that serve content you have the right to access.',
+                  'A movies & TV app powered by Stremio addons, CloudStream repositories and Telegram. Burner hosts no content \u2014 catalogs, metadata and streams come from the sources you add. Only use sources that serve content you have the right to access.',
                   style: TextStyle(fontSize: 13, height: 1.45),
                 ),
               ],
@@ -152,6 +163,57 @@ class ProfileScreen extends StatelessWidget {
       ),
     );
     if (confirmed == true) await action();
+  }
+}
+
+class _DiscoverySummary extends StatelessWidget {
+  final int addons;
+  final int repos;
+  final int plugins;
+  final bool telegram;
+
+  const _DiscoverySummary({
+    required this.addons,
+    required this.repos,
+    required this.plugins,
+    required this.telegram,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final chips = <String>[
+      '$addons addon${addons == 1 ? '' : 's'}',
+      '$repos CS repo${repos == 1 ? '' : 's'}',
+      if (plugins > 0) '$plugins providers',
+      if (telegram) 'Telegram on',
+    ];
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, top: 8),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final chip in chips)
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: BurnerColors.card,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: BurnerColors.stroke),
+              ),
+              child: Text(
+                chip,
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  color: BurnerColors.textSecondary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }
 

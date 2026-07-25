@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../core/constants.dart';
+import '../core/responsive.dart';
 import '../core/theme.dart';
 import '../providers/addon_provider.dart';
 import '../providers/catalog_provider.dart';
@@ -9,7 +10,6 @@ import '../providers/library_provider.dart';
 import '../widgets/common.dart';
 import '../widgets/content_row.dart';
 import '../widgets/hero_carousel.dart';
-import 'addons_screen.dart';
 
 /// Home: hero carousel + Continue Watching + catalog rails.
 class HomeScreen extends StatefulWidget {
@@ -58,15 +58,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   letterSpacing: 3,
                 ),
               ),
-              actions: [
-                IconButton(
-                  tooltip: 'Manage addons',
-                  icon: const Icon(Icons.extension_outlined),
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const AddonsScreen()),
-                  ),
-                ),
-              ],
             ),
             if (catalogs.loading && catalogs.rows.isEmpty)
               const SliverToBoxAdapter(child: _HomeLoading())
@@ -99,7 +90,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   childCount: catalogs.rows.length,
                 ),
               ),
-              const SliverToBoxAdapter(child: SizedBox(height: 96)),
+              SliverToBoxAdapter(
+                child: SizedBox(height: Responsive.of(context).bottomSafePadding),
+              ),
             ],
           ],
         ),
@@ -113,26 +106,31 @@ class _HomeLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final height = MediaQuery.of(context).size.height * 0.56;
+    final r = Responsive.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        PulseBox(width: double.infinity, height: height,
-            borderRadius: BorderRadius.zero),
+        PulseBox(
+          width: double.infinity,
+          height: r.heroHeight,
+          borderRadius: BorderRadius.zero,
+        ),
         for (var row = 0; row < 2; row++) ...[
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 20, 16, 10),
-            child: PulseBox(width: 150, height: 18),
+          Padding(
+            padding: EdgeInsets.fromLTRB(r.gutter, 20, r.gutter, 10),
+            child: const PulseBox(width: 150, height: 18),
           ),
           SizedBox(
-            height: 178,
+            height: r.railHeight,
             child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.symmetric(horizontal: r.gutter),
               scrollDirection: Axis.horizontal,
               itemCount: 6,
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
-              itemBuilder: (_, __) =>
-                  const PulseBox(width: 118, height: 177),
+              separatorBuilder: (_, __) => SizedBox(width: r.isSmall ? 8 : 10),
+              itemBuilder: (_, __) => PulseBox(
+                width: r.railPosterWidth,
+                height: r.railPosterWidth * 1.5,
+              ),
             ),
           ),
         ],

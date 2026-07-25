@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../core/responsive.dart';
 import '../core/theme.dart';
 import '../providers/library_provider.dart';
 import '../widgets/poster_card.dart';
@@ -56,7 +57,12 @@ class _ContinueWatchingTab extends StatelessWidget {
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 96),
+      padding: EdgeInsets.fromLTRB(
+        Responsive.of(context).gutter,
+        14,
+        Responsive.of(context).gutter,
+        Responsive.of(context).bottomSafePadding,
+      ),
       itemCount: entries.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
@@ -112,6 +118,8 @@ class _ContinueTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final art = entry.meta.background ?? entry.meta.poster;
+    final r = Responsive.of(context);
+    final thumbWidth = (r.width * 0.34).clamp(104.0, 168.0);
     return Material(
       color: BurnerColors.card,
       borderRadius: BorderRadius.circular(10),
@@ -125,8 +133,8 @@ class _ContinueTile extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: SizedBox(
-                  width: 128,
-                  height: 72,
+                  width: thumbWidth,
+                  height: thumbWidth * 9 / 16,
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
@@ -212,13 +220,14 @@ class _WatchlistTab extends StatelessWidget {
       );
     }
 
+    final r = Responsive.of(context);
     return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 96),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
+      padding: EdgeInsets.fromLTRB(r.gutter, 14, r.gutter, r.bottomSafePadding),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: r.gridColumns,
         mainAxisSpacing: 14,
         crossAxisSpacing: 10,
-        childAspectRatio: 2 / 3.55,
+        childAspectRatio: 2 / 3.35,
       ),
       itemCount: items.length,
       itemBuilder: (context, index) => PosterCard(
