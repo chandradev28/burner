@@ -65,21 +65,7 @@ lib/
    flutter pub get
    ```
 
-3. **Android:** add the internet permission (and cleartext for `http://` streams) to `android/app/src/main/AndroidManifest.xml`:
-
-   ```xml
-   <uses-permission android:name="android.permission.INTERNET" />
-   <application android:usesCleartextTraffic="true" ... >
-   ```
-
-4. **iOS:** if you need to play non-HTTPS streams, add an ATS exception to `ios/Runner/Info.plist`:
-
-   ```xml
-   <key>NSAppTransportSecurity</key>
-   <dict><key>NSAllowsArbitraryLoads</key><true/></dict>
-   ```
-
-5. Run it:
+3. Run it — internet permissions for Android and iOS are already configured (see [Internet & permissions](#internet--permissions) below):
 
    ```bash
    flutter run
@@ -98,3 +84,21 @@ https://v3-cinemeta.strem.io/manifest.json
 ## Disclaimer
 
 Burner is an addon **client**. It hosts no content and ships only with Cinemeta (metadata). You are responsible for the addons you install — only use addons that serve content you have the legal right to access.
+
+## Internet & permissions
+
+This repo ships pre-configured platform files so all networking works out of the box after `flutter create .`:
+
+- **Android** (`android/app/src/main/AndroidManifest.xml`)
+  - `INTERNET` — addon catalogs, metadata, artwork and video streams
+  - `ACCESS_NETWORK_STATE` — connectivity checks
+  - `WAKE_LOCK` — keep screen on during playback
+  - `FOREGROUND_SERVICE` — media playback
+  - `usesCleartextTraffic="true"` — allows plain `http://` streams (some addons still serve them). Remove for https-only.
+  - `<queries>` for `http`/`https` — lets url_launcher open external links on Android 11+
+- **iOS** (`ios/Runner/Info.plist`)
+  - `NSAppTransportSecurity > NSAllowsArbitraryLoads` — allows non-https streams
+  - `UIBackgroundModes: audio` — keeps audio alive if the app is backgrounded during playback
+  - `LSApplicationQueriesSchemes` — url_launcher support
+
+> Note: `flutter create .` does not overwrite existing files, so these stay in place when you generate the platform folders. If you ever regenerate from scratch, re-apply these settings.
