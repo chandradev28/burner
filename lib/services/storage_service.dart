@@ -8,6 +8,11 @@ class StorageService {
   static const String watchlistKey = 'burner.watchlist';
   static const String progressKey = 'burner.progress';
 
+  // Content discovery sources
+  static const String cloudStreamReposKey = 'burner.cs.repos';
+  static const String telegramConfigKey = 'burner.telegram.config';
+  static const String sourceTogglesKey = 'burner.sources.toggles';
+
   static SharedPreferences? _prefs;
 
   static Future<SharedPreferences> get prefs async {

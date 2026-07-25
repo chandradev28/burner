@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../core/responsive.dart';
 import '../core/theme.dart';
 import '../models/meta.dart';
 import '../screens/detail_screen.dart';
@@ -8,13 +9,15 @@ import '../screens/detail_screen.dart';
 /// Poster tile (2:3) used in rails, grids and search results.
 class PosterCard extends StatelessWidget {
   final MetaItem item;
-  final double width;
+
+  /// When null the width is derived from the screen size.
+  final double? width;
   final bool showTitle;
 
   const PosterCard({
     super.key,
     required this.item,
-    this.width = 118,
+    this.width,
     this.showTitle = false,
   });
 
@@ -27,7 +30,7 @@ class PosterCard extends StatelessWidget {
         );
       },
       child: SizedBox(
-        width: width,
+        width: width ?? Responsive.of(context).railPosterWidth,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../core/responsive.dart';
 import '../core/theme.dart';
 
 /// A single destination in the [GlassNavBar].
@@ -19,10 +20,8 @@ class GlassNavItem {
 
 /// Global "liquid glass" footer navigation bar.
 ///
-/// Real frosted glass: the content behind it is blurred with a [BackdropFilter],
-/// then layered with a translucent gradient, a specular top highlight and a
-/// hairline border so it reads as a floating pane of glass rather than a
-/// flat translucent box. The active tab gets an animated gradient pill.
+/// Sizing is fully responsive and safe-area aware: the bar floats above the
+/// system gesture bar / navigation buttons instead of being clipped by them.
 class GlassNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -37,20 +36,26 @@ class GlassNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).padding.bottom;
+    final r = Responsive.of(context);
+    final horizontal = r.isTablet ? r.width * 0.18 : r.gutter;
+    final radius = r.navBarHeight / 2 + 4;
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(14, 0, 14, bottomInset > 0 ? 10 : 14),
+      // Reserve the real system inset so the bar is never cut off.
+      padding: EdgeInsets.fromLTRB(
+        horizontal,
+        0,
+        horizontal,
+        r.bottomInset + r.navBarBottomMargin,
+      ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(radius),
         child: BackdropFilter(
-          // The actual glass: blur + slight desaturation of whatever scrolls behind.
           filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
           child: Container(
-            height: 66,
+            height: r.navBarHeight,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(28),
-              // Translucent tint, lighter at the top like a lit glass edge.
+              borderRadius: BorderRadius.circular(radius),
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
@@ -71,7 +76,6 @@ class GlassNavBar extends StatelessWidget {
                   blurRadius: 28,
                   offset: const Offset(0, 10),
                 ),
-                // Faint brand glow under the glass.
                 BoxShadow(
                   color: BurnerColors.purple.withOpacity(0.18),
                   blurRadius: 34,
@@ -82,11 +86,10 @@ class GlassNavBar extends StatelessWidget {
             ),
             child: Stack(
               children: [
-                // Specular highlight running along the top edge.
                 Positioned(
                   top: 0,
-                  left: 24,
-                  right: 24,
+                  left: radius,
+                  right: radius,
                   child: Container(
                     height: 1,
                     decoration: BoxDecoration(
@@ -107,6 +110,7 @@ class GlassNavBar extends StatelessWidget {
                         child: _GlassNavButton(
                           item: items[i],
                           selected: i == currentIndex,
+                          compact: r.isSmall,
                           onTap: () => onTap(i),
                         ),
                       ),
@@ -124,16 +128,19 @@ class GlassNavBar extends StatelessWidget {
 class _GlassNavButton extends StatelessWidget {
   final GlassNavItem item;
   final bool selected;
+  final bool compact;
   final VoidCallback onTap;
 
   const _GlassNavButton({
     required this.item,
     required this.selected,
+    required this.compact,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final iconSize = compact ? 19.0 : 21.0;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
@@ -142,10 +149,9 @@ class _GlassNavButton extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 260),
         curve: Curves.easeOutCubic,
-        margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+        margin: EdgeInsets.symmetric(horizontal: compact ? 3 : 6, vertical: 7),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          // Active tab sits on a soft gradient pill, like light pooling in glass.
+          borderRadius: BorderRadius.circular(18),
           gradient: selected
               ? LinearGradient(
                   begin: Alignment.topLeft,
@@ -160,34 +166,41 @@ class _GlassNavButton extends StatelessWidget {
               ? Border.all(color: Colors.white.withOpacity(0.18))
               : null,
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            AnimatedScale(
-              duration: const Duration(milliseconds: 260),
-              curve: Curves.easeOutBack,
-              scale: selected ? 1.08 : 1.0,
-              child: Icon(
-                selected ? item.activeIcon : item.icon,
-                size: 22,
-                color: selected
-                    ? Colors.white
-                    : BurnerColors.textSecondary,
-              ),
+        // FittedBox guarantees the icon+label never overflow the bar height,
+        // regardless of the user's system font scale.
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                AnimatedScale(
+                  duration: const Duration(milliseconds: 260),
+                  curve: Curves.easeOutBack,
+                  scale: selected ? 1.08 : 1.0,
+                  child: Icon(
+                    selected ? item.activeIcon : item.icon,
+                    size: iconSize,
+                    color:
+                        selected ? Colors.white : BurnerColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 260),
+                  style: TextStyle(
+                    fontSize: compact ? 9.5 : 10.5,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    color:
+                        selected ? Colors.white : BurnerColors.textSecondary,
+                  ),
+                  child: Text(item.label, maxLines: 1),
+                ),
+              ],
             ),
-            const SizedBox(height: 3),
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 260),
-              style: TextStyle(
-                fontSize: 10.5,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                color: selected
-                    ? Colors.white
-                    : BurnerColors.textSecondary,
-              ),
-              child: Text(item.label),
-            ),
-          ],
+          ),
         ),
       ),
     );

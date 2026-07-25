@@ -10,6 +10,15 @@ class BurnerConstants {
     'https://v3-cinemeta.strem.io/manifest.json',
   ];
 
+  /// Well-known CloudStream repositories, offered as one-tap installs in
+  /// Content Discovery. Users can still paste any custom repo URL.
+  static const Map<String, String> knownCloudStreamRepos = <String, String>{
+    'CloudStream Official':
+        'https://raw.githubusercontent.com/recloudstream/extensions/builds/repo.json',
+    'CloudStream Pre-release':
+        'https://raw.githubusercontent.com/recloudstream/extensions/prerelease/repo.json',
+  };
+
   /// Max catalog rails pulled from each addon for the Home screen.
   static const int maxRowsPerAddon = 4;
 
@@ -18,4 +27,7 @@ class BurnerConstants {
 
   /// Max items to show per rail.
   static const int maxItemsPerRow = 30;
+
+  /// Telegram Bot API base.
+  static const String telegramApi = 'https://api.telegram.org';
 }

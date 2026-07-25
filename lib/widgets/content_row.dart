@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/responsive.dart';
 import '../models/meta.dart';
 import 'poster_card.dart';
 
@@ -13,27 +14,28 @@ class ContentRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) return const SizedBox.shrink();
+    final r = Responsive.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
+          padding: EdgeInsets.fromLTRB(r.gutter, 20, r.gutter, 10),
           child: Text(
             title,
-            style: const TextStyle(
-              fontSize: 17,
+            style: TextStyle(
+              fontSize: r.isSmall ? 15.5 : 17,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.2,
             ),
           ),
         ),
         SizedBox(
-          height: 178,
+          height: r.railHeight,
           child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: EdgeInsets.symmetric(horizontal: r.gutter),
             scrollDirection: Axis.horizontal,
             itemCount: items.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 10),
+            separatorBuilder: (_, __) => SizedBox(width: r.isSmall ? 8 : 10),
             itemBuilder: (context, index) => PosterCard(item: items[index]),
           ),
         ),
