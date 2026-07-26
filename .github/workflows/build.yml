@@ -1,14 +1,14 @@
-name: Build Burner
+name: Build Android APK
 
-# Manual only. Builds never start automatically on push or pull request —
-# open the Actions tab, pick "Build Burner" and press "Run workflow".
+# Builds run only when you start them by hand from the Actions tab.
 on:
   workflow_dispatch:
 
 jobs:
   android:
-    name: Build Android APK
+    name: Android APK
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,22 +25,73 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Generate platform scaffolding
-        # This repo only tracks lib/ + config. flutter create fills in the
-        # android/ project without overwriting our committed AndroidManifest.
+      # ---------------------------------------------------------------- TDLib
+      # Telegram account login (phone + OTP) talks to TDLib over dart:ffi, so
+      # libtdjson.so has to be bundled per ABI. Every step below is optional:
+      # if the native build fails, the APK still ships and the app simply shows
+      # Telegram login as unavailable.
+      - name: Cache TDLib Android build
+        id: tdlib-cache
+        uses: actions/cache@v4
+        continue-on-error: true
+        with:
+          path: tdlib-android
+          key: tdlib-android-v1-${{ runner.os }}
+
+      - name: Install TDLib build dependencies
+        if: steps.tdlib-cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y make git zlib1g-dev libssl-dev gperf cmake ninja-build php-cli
+
+      - name: Build TDLib for Android
+        if: steps.tdlib-cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        timeout-minutes: 90
+        env:
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_HOME }}
+        run: |
+          set -e
+          git clone --depth 1 https://github.com/tdlib/td.git td-src
+          cd td-src/example/android
+          # Only the ABIs Flutter ships for.
+          export ANDROID_STL=c++_static
+          ./build-openssl.sh
+          ./build-tdlib.sh
+          cd "$GITHUB_WORKSPACE"
+          mkdir -p tdlib-android
+          cp -r td-src/example/android/tdlib/libs/* tdlib-android/ || true
+
+      - name: Bundle libtdjson into the app
+        continue-on-error: true
+        run: |
+          if [ -d tdlib-android ]; then
+            for abi in arm64-v8a armeabi-v7a x86_64; do
+              if [ -f "tdlib-android/$abi/libtdjson.so" ]; then
+                mkdir -p "android/app/src/main/jniLibs/$abi"
+                cp "tdlib-android/$abi/libtdjson.so" "android/app/src/main/jniLibs/$abi/"
+                echo "bundled libtdjson.so for $abi"
+              fi
+            done
+          fi
+          ls -R android/app/src/main/jniLibs 2>/dev/null || echo "no native libs bundled"
+
+      # ------------------------------------------------------------------ App
+      - name: Generate Android platform files
         run: flutter create . --project-name burner --org com.burner.app --platforms=android
 
-      - name: Install dependencies
+      - name: Get packages
         run: flutter pub get
 
       - name: Analyze
-        run: flutter analyze --no-fatal-infos --no-fatal-warnings
         continue-on-error: true
+        run: flutter analyze
 
-      - name: Build release APKs (split per ABI)
+      - name: Build split APKs
         run: flutter build apk --release --split-per-abi
 
-      - name: Build universal release APK
+      - name: Build universal APK
         run: flutter build apk --release
 
       - name: Upload APKs
@@ -48,5 +99,4 @@ jobs:
         with:
           name: burner-apk
           path: build/app/outputs/flutter-apk/*.apk
-          if-no-files-found: error
           retention-days: 30

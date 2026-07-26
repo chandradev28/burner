@@ -7,6 +7,7 @@ import '../models/stream_item.dart';
 import '../providers/addon_provider.dart';
 import '../providers/skin_provider.dart';
 import '../providers/sources_provider.dart';
+import '../providers/telegram_account_provider.dart';
 import '../screens/player_screen.dart';
 import '../services/addon_client.dart';
 import '../services/source_aggregator.dart';
@@ -63,17 +64,24 @@ class _StreamSheetState extends State<StreamSheet> {
   Future<List<StreamItem>> _loadCombined() async {
     final addons = context.read<AddonProvider>().addons;
     final sources = context.read<SourcesProvider>();
+    final account = context.read<TelegramAccountProvider>();
 
     final addonFuture = sources.addonsEnabled
         ? AddonClient.resolveStreams(addons, widget.meta.type, widget.videoId)
             .catchError((_) => <StreamItem>[])
         : Future.value(<StreamItem>[]);
 
-    final telegramFuture = SourceAggregator.telegramStreams(
-      config: sources.telegram,
-      index: sources.telegramIndex,
-      query: widget.meta.name,
-    ).catchError((_) => <StreamItem>[]);
+    // Prefer the logged-in account (full access, no size cap); fall back to the
+    // legacy bot configuration when nobody is signed in.
+    final telegramFuture = account.isActiveSource
+        ? account
+            .streamsFor(widget.meta.name)
+            .catchError((_) => <StreamItem>[])
+        : SourceAggregator.telegramStreams(
+            config: sources.telegram,
+            index: sources.telegramIndex,
+            query: widget.meta.name,
+          ).catchError((_) => <StreamItem>[]);
 
     final providerFuture = sources.cloudStreamEnabled
         ? WebProviders.resolve(meta: widget.meta, videoId: widget.videoId)
@@ -321,7 +329,7 @@ class _EmptyStreams extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Add a streaming addon, an in-app provider or Telegram in Profile \u2192 Content discovery to get sources for this title.',
+              'Add a streaming addon, an in-app provider or log in to Telegram in Profile \u2192 Content discovery to get sources for this title.',
               textAlign: TextAlign.center,
               style: TextStyle(color: skin.textSecondary, fontSize: 13),
             ),
