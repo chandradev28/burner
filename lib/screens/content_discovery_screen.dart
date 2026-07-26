@@ -5,6 +5,7 @@ import '../core/responsive.dart';
 import '../providers/addon_provider.dart';
 import '../providers/skin_provider.dart';
 import '../providers/sources_provider.dart';
+import '../providers/telegram_account_provider.dart';
 import 'addons_screen.dart';
 import 'cloudstream_screen.dart';
 import 'telegram_screen.dart';
@@ -20,8 +21,8 @@ class ContentDiscoveryScreen extends StatelessWidget {
     final r = Responsive.of(context);
     final addons = context.watch<AddonProvider>();
     final sources = context.watch<SourcesProvider>();
-    final telegramOn =
-        sources.telegram.enabled && sources.telegram.isConfigured;
+    final account = context.watch<TelegramAccountProvider>();
+    final telegramOn = account.isActiveSource;
 
     return Scaffold(
       appBar: AppBar(
@@ -62,20 +63,19 @@ class ContentDiscoveryScreen extends StatelessWidget {
           _SourceCard(
             icon: Icons.send_rounded,
             title: 'Telegram',
-            subtitle: telegramOn
-                ? 'Connected as @${sources.telegram.botUsername ?? 'bot'} \u2022 ${sources.telegramIndex.length} files indexed'
-                : 'Play video files from your channels via a bot',
+            subtitle: account.isLoggedIn
+                ? '${account.statusLabel} \u2022 ${account.selectedChats.length} pinned chat${account.selectedChats.length == 1 ? '' : 's'}'
+                : 'Log in with your phone number and stream from your own Telegram',
             enabled: telegramOn,
-            onToggle: (v) async {
-              final provider = context.read<SourcesProvider>();
-              if (!provider.telegram.isConfigured) {
+            onToggle: (v) {
+              final provider = context.read<TelegramAccountProvider>();
+              if (!provider.isLoggedIn) {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const TelegramScreen()),
                 );
                 return;
               }
-              await provider
-                  .saveTelegram(provider.telegram.copyWith(enabled: v));
+              provider.setEnabled(v);
             },
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const TelegramScreen()),
@@ -149,8 +149,8 @@ class _CombineNote extends StatelessWidget {
             child: Text(
               'CloudStream providers ship as Android .cs3 plugins, so their own '
               'scraper code cannot run here. Repos you add are indexed for '
-              'reference, while the built-in providers, addons and Telegram '
-              'links resolve to real video URLs and play in the app.',
+              'reference, while the built-in providers, addons and your '
+              'Telegram account resolve to real video URLs and play in the app.',
               style: TextStyle(
                   fontSize: 11.5, height: 1.45, color: skin.textSecondary),
             ),

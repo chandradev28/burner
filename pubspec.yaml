@@ -18,6 +18,9 @@ dependencies:
   wakelock_plus: ^1.2.5
   url_launcher: ^6.3.0
   cupertino_icons: ^1.0.8
+  # Telegram account login talks to TDLib through dart:ffi.
+  ffi: ^2.1.2
+  path_provider: ^2.1.3
 
 dev_dependencies:
   flutter_test:

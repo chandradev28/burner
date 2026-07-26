@@ -11,6 +11,7 @@ class StorageService {
   // Content discovery sources
   static const String cloudStreamReposKey = 'burner.cs.repos';
   static const String telegramConfigKey = 'burner.telegram.config';
+  static const String telegramAccountKey = 'burner.telegram.account';
   static const String sourceTogglesKey = 'burner.sources.toggles';
 
   // Appearance

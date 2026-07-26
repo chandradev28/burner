@@ -8,6 +8,7 @@ import 'providers/catalog_provider.dart';
 import 'providers/library_provider.dart';
 import 'providers/skin_provider.dart';
 import 'providers/sources_provider.dart';
+import 'providers/telegram_account_provider.dart';
 import 'screens/splash_screen.dart';
 
 void main() {
@@ -35,6 +36,10 @@ class BurnerApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CatalogProvider()),
         ChangeNotifierProvider(create: (_) => LibraryProvider()),
         ChangeNotifierProvider(create: (_) => SourcesProvider()),
+        // Restores an existing Telegram session on launch.
+        ChangeNotifierProvider(
+          create: (_) => TelegramAccountProvider()..init(),
+        ),
       ],
       // The whole app is rebuilt with a new ThemeData when the skin changes,
       // so switching UI restyles every screen at once.
