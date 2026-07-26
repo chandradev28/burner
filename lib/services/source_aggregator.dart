@@ -1,14 +1,13 @@
-import '../models/cloudstream.dart';
-import '../models/meta.dart';
 import '../models/stream_item.dart';
 import '../models/telegram.dart';
 import 'telegram_client.dart';
 
-/// Builds the extra (non-Stremio) half of the combined stream list.
+/// Builds the extra (non-Stremio) half of the combined stream list and merges
+/// every source into one ordered, de-duplicated list.
 ///
-/// Stremio addon streams are fetched by [AddonClient]; this class adds
-/// CloudStream provider entries and Telegram files, and merges everything
-/// into a single, de-duplicated, source-labelled list.
+/// CloudStream `.cs3` plugins are compiled Android code, so they can never be
+/// executed here \u2014 in-app playback for those sources is handled natively by
+/// `WebProviders` instead. Nothing in this class emits plugin file links.
 class SourceAggregator {
   SourceAggregator._();
 
@@ -33,50 +32,12 @@ class SourceAggregator {
       ];
       streams.add(StreamItem(
         name: 'Telegram',
-        title: '${hit.caption}\n${parts.join(' \u2022 ')}',
+        title: '${hit.caption}\n${parts.join(' \\u2022 ')}',
         url: url,
         sourceKind: 'telegram',
         sourceName: hit.chat.isEmpty ? 'Telegram' : '@${hit.chat}',
       ));
     }
-    return streams;
-  }
-
-  /// Surfaces enabled CloudStream providers for a title.
-  ///
-  /// CloudStream providers ship as Android `.cs3` plugins, so their scrapers
-  /// cannot be executed inside Flutter. Burner indexes every repo you add and
-  /// exposes each enabled provider as an external "open in provider" source,
-  /// which keeps the picker unified while staying honest about playback.
-  static List<StreamItem> cloudStreamStreams({
-    required List<CsRepo> repos,
-    required MetaItem meta,
-  }) {
-    final isSeries = meta.type.toLowerCase() != 'movie';
-    final streams = <StreamItem>[];
-
-    for (final repo in repos) {
-      for (final plugin in repo.activePlugins) {
-        final supports =
-            isSeries ? plugin.supportsSeries : plugin.supportsMovies;
-        if (!supports) continue;
-        final lang = plugin.language?.toUpperCase();
-        streams.add(StreamItem(
-          name: plugin.displayName,
-          title: [
-            repo.name,
-            if (lang != null && lang.isNotEmpty) lang,
-            if (plugin.status == 2) 'slow',
-            if (plugin.status == 3) 'beta',
-          ].join(' \u2022 '),
-          externalUrl: plugin.url,
-          sourceKind: 'cloudstream',
-          sourceName: plugin.displayName,
-        ));
-      }
-    }
-    streams.sort((a, b) =>
-        (a.name ?? '').toLowerCase().compareTo((b.name ?? '').toLowerCase()));
     return streams;
   }
 

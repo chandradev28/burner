@@ -10,14 +10,18 @@ class StreamItem {
   final int? fileIdx;
   final Map<String, dynamic> behaviorHints;
 
+  /// Extra HTTP headers (Referer / User-Agent) required to play [url].
+  /// Scraped providers usually reject requests without them.
+  final Map<String, String> headers;
+
   /// Filled in after fetching, so the UI can group streams by addon.
   final String addonName;
 
-  /// Which content source produced this stream: 'stremio', 'cloudstream'
+  /// Which content source produced this stream: 'stremio', 'provider'
   /// or 'telegram'. Used to group and label combined results.
   final String sourceKind;
 
-  /// Human readable source name (addon name, CS provider, channel...).
+  /// Human readable source name (addon name, provider, channel...).
   final String sourceName;
 
   const StreamItem({
@@ -30,6 +34,7 @@ class StreamItem {
     this.infoHash,
     this.fileIdx,
     this.behaviorHints = const {},
+    this.headers = const {},
     this.addonName = '',
     this.sourceKind = 'stremio',
     this.sourceName = '',
@@ -81,8 +86,8 @@ class StreamItem {
   /// Short label for the source group header in the stream picker.
   String get sourceLabel {
     switch (sourceKind) {
-      case 'cloudstream':
-        return 'CloudStream';
+      case 'provider':
+        return 'In-app providers';
       case 'telegram':
         return 'Telegram';
       default:

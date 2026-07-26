@@ -19,6 +19,7 @@ class PlayerScreen extends StatefulWidget {
   final MetaItem? meta;
   final String? videoId; // episode id, null for movies
   final String? videoLabel; // e.g. "S1 E2 \u2022 Pilot"
+  final Map<String, String>? headers; // required by scraped providers
 
   const PlayerScreen({
     super.key,
@@ -27,6 +28,7 @@ class PlayerScreen extends StatefulWidget {
     this.meta,
     this.videoId,
     this.videoLabel,
+    this.headers,
   });
 
   @override
@@ -53,8 +55,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   Future<void> _init() async {
     try {
-      final controller =
-          VideoPlayerController.networkUrl(Uri.parse(widget.streamUrl));
+      final controller = VideoPlayerController.networkUrl(
+        Uri.parse(widget.streamUrl),
+        httpHeaders: widget.headers ?? const {},
+      );
       _videoController = controller;
       await controller.initialize();
 
