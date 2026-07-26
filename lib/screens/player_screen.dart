@@ -7,12 +7,13 @@ import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
-import '../core/theme.dart';
 import '../models/meta.dart';
 import '../providers/library_provider.dart';
+import '../providers/skin_provider.dart';
 
 /// Full-screen video player (video_player + chewie) with resume-from-position
-/// and automatic Continue Watching progress saving.
+/// and automatic Continue Watching progress saving. The scrubber is tinted
+/// with the active skin's accent color.
 class PlayerScreen extends StatefulWidget {
   final String streamUrl;
   final String title;
@@ -54,10 +55,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   Future<void> _init() async {
+    // skinOnce: this runs outside build, so it must not subscribe.
+    final skin = context.skinOnce;
     try {
       final controller = VideoPlayerController.networkUrl(
         Uri.parse(widget.streamUrl),
-        httpHeaders: widget.headers ?? const {},
+        httpHeaders: widget.headers ?? {},
       );
       _videoController = controller;
       await controller.initialize();
@@ -82,8 +85,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
         allowedScreenSleep: false,
         allowPlaybackSpeedChanging: true,
         materialProgressColors: ChewieProgressColors(
-          playedColor: BurnerColors.purple,
-          handleColor: BurnerColors.purple,
+          playedColor: skin.accent,
+          handleColor: skin.accent,
           bufferedColor: Colors.white24,
           backgroundColor: Colors.white12,
         ),
@@ -151,8 +154,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     ),
                     ConstrainedBox(
                       constraints: BoxConstraints(
-                          maxWidth:
-                              MediaQuery.of(context).size.width * 0.6),
+                          maxWidth: MediaQuery.of(context).size.width * 0.6),
                       child: Text(
                         widget.title,
                         maxLines: 1,
@@ -176,14 +178,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   Widget _buildPlayer() {
+    final skin = context.skin;
     if (_error != null) {
       return Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline_rounded,
-                color: BurnerColors.danger, size: 44),
+            Icon(Icons.error_outline_rounded, color: skin.danger, size: 44),
             const SizedBox(height: 12),
             Text(_error!,
                 textAlign: TextAlign.center,
@@ -194,7 +196,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     }
     final chewie = _chewieController;
     if (chewie == null) {
-      return const CircularProgressIndicator(color: BurnerColors.purple);
+      return CircularProgressIndicator(color: skin.accent);
     }
     return Chewie(controller: chewie);
   }

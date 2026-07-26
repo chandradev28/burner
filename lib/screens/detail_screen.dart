@@ -2,10 +2,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../core/theme.dart';
 import '../models/meta.dart';
 import '../providers/addon_provider.dart';
 import '../providers/library_provider.dart';
+import '../providers/skin_provider.dart';
 import '../services/addon_client.dart';
 import '../widgets/common.dart';
 import '../widgets/episode_tile.dart';
@@ -13,6 +13,7 @@ import '../widgets/stream_sheet.dart';
 
 /// Immersive detail page: backdrop art, logo/title, Play + My List,
 /// synopsis, cast, and (for series) a season picker with episode list.
+/// Every color, radius and overlay comes from the active skin.
 class DetailScreen extends StatefulWidget {
   final MetaItem item;
   final bool autoPlay;
@@ -120,6 +121,7 @@ class _DetailScreenState extends State<DetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     final library = context.watch<LibraryProvider>();
     final inList = library.isInWatchlist(meta);
     final art = meta.background ?? meta.poster;
@@ -131,7 +133,7 @@ class _DetailScreenState extends State<DetailScreen> {
           SliverAppBar(
             expandedHeight: width * 0.62,
             pinned: true,
-            backgroundColor: BurnerColors.bg,
+            backgroundColor: skin.bg,
             leading: _CircleIconButton(
               icon: Icons.arrow_back_rounded,
               onTap: () => Navigator.of(context).pop(),
@@ -144,16 +146,13 @@ class _DetailScreenState extends State<DetailScreen> {
                     CachedNetworkImage(
                       imageUrl: art,
                       fit: BoxFit.cover,
-                      placeholder: (_, __) =>
-                          Container(color: BurnerColors.card),
-                      errorWidget: (_, __, ___) =>
-                          Container(color: BurnerColors.card),
+                      placeholder: (_, __) => Container(color: skin.card),
+                      errorWidget: (_, __, ___) => Container(color: skin.card),
                     )
                   else
-                    Container(color: BurnerColors.card),
-                  const DecoratedBox(
-                    decoration:
-                        BoxDecoration(gradient: BurnerColors.heroOverlay),
+                    Container(color: skin.card),
+                  DecoratedBox(
+                    decoration: BoxDecoration(gradient: skin.heroOverlay),
                   ),
                 ],
               ),
@@ -187,8 +186,8 @@ class _DetailScreenState extends State<DetailScreen> {
                       if (meta.runtime != null) meta.runtime!,
                       if (meta.isSeries) 'Series',
                     ].join('  \u2022  '),
-                    style: const TextStyle(
-                        color: BurnerColors.textSecondary,
+                    style: TextStyle(
+                        color: skin.textSecondary,
                         fontSize: 13,
                         fontWeight: FontWeight.w500),
                   ),
@@ -203,14 +202,13 @@ class _DetailScreenState extends State<DetailScreen> {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
-                                  border: Border.all(
-                                      color: BurnerColors.stroke),
+                                  border: Border.all(color: skin.stroke),
                                   borderRadius: BorderRadius.circular(999),
                                 ),
                                 child: Text(g,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         fontSize: 11.5,
-                                        color: BurnerColors.textSecondary)),
+                                        color: skin.textSecondary)),
                               ))
                           .toList(),
                     ),
@@ -228,9 +226,7 @@ class _DetailScreenState extends State<DetailScreen> {
                       ),
                       const SizedBox(width: 10),
                       _CircleIconButton(
-                        icon: inList
-                            ? Icons.check_rounded
-                            : Icons.add_rounded,
+                        icon: inList ? Icons.check_rounded : Icons.add_rounded,
                         filled: inList,
                         onTap: () => library.toggleWatchlist(meta),
                       ),
@@ -241,10 +237,10 @@ class _DetailScreenState extends State<DetailScreen> {
                     const SizedBox(height: 18),
                     Text(
                       meta.description!,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 13.5,
                           height: 1.5,
-                          color: BurnerColors.textPrimary),
+                          color: skin.textPrimary),
                     ),
                   ],
                   if (meta.cast.isNotEmpty) ...[
@@ -262,12 +258,11 @@ class _DetailScreenState extends State<DetailScreen> {
             ),
           ),
           if (_loading)
-            const SliverToBoxAdapter(
+            SliverToBoxAdapter(
               child: Padding(
-                padding: EdgeInsets.all(28),
+                padding: const EdgeInsets.all(28),
                 child: Center(
-                    child: CircularProgressIndicator(
-                        color: BurnerColors.purple)),
+                    child: CircularProgressIndicator(color: skin.accent)),
               ),
             )
           else if (meta.isSeries) ...[
@@ -275,11 +270,9 @@ class _DetailScreenState extends State<DetailScreen> {
             SliverList(
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
-                  final episode =
-                      _episodesForSeason(_selectedSeason)[index];
+                  final episode = _episodesForSeason(_selectedSeason)[index];
                   final library = context.read<LibraryProvider>();
-                  final progress =
-                      library.progressFor(meta.type, meta.id);
+                  final progress = library.progressFor(meta.type, meta.id);
                   final watchedFraction = progress?.videoId == episode.id
                       ? progress!.fraction
                       : 0.0;
@@ -290,8 +283,7 @@ class _DetailScreenState extends State<DetailScreen> {
                       context,
                       meta: meta,
                       videoId: episode.id,
-                      videoLabel:
-                          '${episode.code} \u2022 ${episode.name}',
+                      videoLabel: '${episode.code} \u2022 ${episode.name}',
                     ),
                   );
                 },
@@ -314,12 +306,13 @@ class _DetailScreenState extends State<DetailScreen> {
   }
 
   Widget _seasonPicker() {
+    final skin = context.skin;
     final seasons = _seasons();
     if (seasons.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(16),
+      return Padding(
+        padding: const EdgeInsets.all(16),
         child: Text('No episode information available.',
-            style: TextStyle(color: BurnerColors.textSecondary)),
+            style: TextStyle(color: skin.textSecondary)),
       );
     }
     return Padding(
@@ -327,25 +320,23 @@ class _DetailScreenState extends State<DetailScreen> {
       child: Row(
         children: [
           const Text('Episodes',
-              style:
-                  TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
           const Spacer(),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: BurnerColors.card,
-              borderRadius: BorderRadius.circular(8),
+              color: skin.card,
+              borderRadius: BorderRadius.circular(skin.cardRadius),
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<int>(
                 value: _selectedSeason,
-                dropdownColor: BurnerColors.card,
-                borderRadius: BorderRadius.circular(10),
+                dropdownColor: skin.card,
+                borderRadius: BorderRadius.circular(skin.cardRadius),
                 items: seasons
                     .map((s) => DropdownMenuItem(
                           value: s,
-                          child: Text(
-                              s == 0 ? 'Specials' : 'Season $s',
+                          child: Text(s == 0 ? 'Specials' : 'Season $s',
                               style: const TextStyle(fontSize: 13.5)),
                         ))
                     .toList(),
@@ -367,18 +358,16 @@ class _MetaLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return RichText(
       text: TextSpan(
-        style: const TextStyle(
-            fontSize: 12.5,
-            height: 1.4,
-            color: BurnerColors.textSecondary),
+        style: TextStyle(
+            fontSize: 12.5, height: 1.4, color: skin.textSecondary),
         children: [
           TextSpan(
               text: '$label: ',
-              style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  color: BurnerColors.textPrimary)),
+              style: TextStyle(
+                  fontWeight: FontWeight.w700, color: skin.textPrimary)),
           TextSpan(text: value),
         ],
       ),
@@ -396,10 +385,11 @@ class _CircleIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Padding(
       padding: const EdgeInsets.all(6),
       child: Material(
-        color: filled ? BurnerColors.purple : Colors.black54,
+        color: filled ? skin.accent : Colors.black54,
         shape: const CircleBorder(),
         child: InkWell(
           customBorder: const CircleBorder(),

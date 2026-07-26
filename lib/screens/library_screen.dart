@@ -3,29 +3,36 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../core/responsive.dart';
-import '../core/theme.dart';
 import '../providers/library_provider.dart';
+import '../providers/skin_provider.dart';
 import '../widgets/poster_card.dart';
 import 'detail_screen.dart';
 import 'player_screen.dart';
 
-/// "My Stuff": Continue Watching + My List tabs.
+/// Continue Watching + saved list. The screen title and the second tab name
+/// follow the active skin ("My Stuff", "My List" or "Library").
 class LibraryScreen extends StatelessWidget {
   const LibraryScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return DefaultTabController(
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          backgroundColor: BurnerColors.bg,
-          title: const Text('My Stuff',
-              style: TextStyle(fontWeight: FontWeight.w800)),
+          backgroundColor: skin.bg,
+          title: Text(
+            skin.navLabels[2],
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              letterSpacing: skin.isAppleTv ? -0.4 : 0,
+            ),
+          ),
           bottom: const TabBar(
             tabs: [
               Tab(text: 'Continue Watching'),
-              Tab(text: 'My List'),
+              Tab(text: 'Saved'),
             ],
           ),
         ),
@@ -45,8 +52,10 @@ class _ContinueWatchingTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     final library = context.watch<LibraryProvider>();
     final entries = library.continueWatching;
+    final r = Responsive.of(context);
 
     if (entries.isEmpty) {
       return const _EmptyState(
@@ -57,12 +66,7 @@ class _ContinueWatchingTab extends StatelessWidget {
     }
 
     return ListView.separated(
-      padding: EdgeInsets.fromLTRB(
-        Responsive.of(context).gutter,
-        14,
-        Responsive.of(context).gutter,
-        Responsive.of(context).bottomSafePadding,
-      ),
+      padding: EdgeInsets.fromLTRB(r.gutter, 14, r.gutter, r.bottomSafePadding),
       itemCount: entries.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
@@ -75,8 +79,8 @@ class _ContinueWatchingTab extends StatelessWidget {
             alignment: Alignment.centerRight,
             padding: const EdgeInsets.only(right: 20),
             decoration: BoxDecoration(
-              color: BurnerColors.danger,
-              borderRadius: BorderRadius.circular(10),
+              color: skin.danger,
+              borderRadius: skin.cardBorderRadius,
             ),
             child: const Icon(Icons.delete_outline_rounded,
                 color: Colors.white),
@@ -117,24 +121,23 @@ class _ContinueTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     final art = entry.meta.background ?? entry.meta.poster;
-    final r = Responsive.of(context);
-    final thumbWidth = (r.width * 0.34).clamp(104.0, 168.0);
     return Material(
-      color: BurnerColors.card,
-      borderRadius: BorderRadius.circular(10),
+      color: skin.card,
+      borderRadius: skin.cardBorderRadius,
       child: InkWell(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: skin.cardBorderRadius,
         onTap: () => _resume(context),
         child: Padding(
           padding: const EdgeInsets.all(10),
           child: Row(
             children: [
               ClipRRect(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(skin.posterRadius),
                 child: SizedBox(
-                  width: thumbWidth,
-                  height: thumbWidth * 9 / 16,
+                  width: 128,
+                  height: 72,
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
@@ -143,9 +146,9 @@ class _ContinueTile extends StatelessWidget {
                               imageUrl: art,
                               fit: BoxFit.cover,
                               errorWidget: (_, __, ___) =>
-                                  Container(color: BurnerColors.stroke),
+                                  Container(color: skin.stroke),
                             )
-                          : Container(color: BurnerColors.stroke),
+                          : Container(color: skin.stroke),
                       const Center(
                         child: Icon(Icons.play_circle_fill_rounded,
                             color: Colors.white, size: 30),
@@ -156,8 +159,7 @@ class _ContinueTile extends StatelessWidget {
                           value: entry.fraction,
                           minHeight: 4,
                           backgroundColor: Colors.white24,
-                          valueColor: const AlwaysStoppedAnimation(
-                              BurnerColors.purple),
+                          valueColor: AlwaysStoppedAnimation(skin.accent),
                         ),
                       ),
                     ],
@@ -180,21 +182,19 @@ class _ContinueTile extends StatelessWidget {
                         child: Text(entry.videoLabel!,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                color: BurnerColors.textSecondary,
-                                fontSize: 12.5)),
+                            style: TextStyle(
+                                color: skin.textSecondary, fontSize: 12.5)),
                       ),
                     const SizedBox(height: 4),
                     Text(
                       '${(entry.fraction * 100).round()}% watched',
-                      style: const TextStyle(
-                          color: BurnerColors.textSecondary, fontSize: 12),
+                      style:
+                          TextStyle(color: skin.textSecondary, fontSize: 12),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded,
-                  color: BurnerColors.textSecondary),
+              Icon(Icons.chevron_right_rounded, color: skin.textSecondary),
             ],
           ),
         ),
@@ -215,8 +215,7 @@ class _WatchlistTab extends StatelessWidget {
       return const _EmptyState(
         icon: Icons.bookmark_add_outlined,
         title: 'Your list is empty',
-        subtitle:
-            'Tap the + button on any movie or show to save it here.',
+        subtitle: 'Tap the + button on any movie or show to save it here.',
       );
     }
 
@@ -249,13 +248,14 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(28),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 48, color: BurnerColors.textSecondary),
+            Icon(icon, size: 48, color: skin.textSecondary),
             const SizedBox(height: 14),
             Text(title,
                 style: const TextStyle(
@@ -263,8 +263,7 @@ class _EmptyState extends StatelessWidget {
             const SizedBox(height: 6),
             Text(subtitle,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                    color: BurnerColors.textSecondary, fontSize: 13)),
+                style: TextStyle(color: skin.textSecondary, fontSize: 13)),
           ],
         ),
       ),
