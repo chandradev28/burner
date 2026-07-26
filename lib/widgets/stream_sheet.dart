@@ -2,17 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../core/theme.dart';
 import '../models/meta.dart';
 import '../models/stream_item.dart';
 import '../providers/addon_provider.dart';
+import '../providers/skin_provider.dart';
 import '../providers/sources_provider.dart';
 import '../screens/player_screen.dart';
 import '../services/addon_client.dart';
 import '../services/source_aggregator.dart';
+import '../services/web_providers.dart';
 
 /// Opens the stream picker bottom sheet for a movie ([videoId] == meta.id)
 /// or an episode ([videoId] == "ttXXXX:season:episode").
+///
+/// The sheet color and corner shape come from the active skin's
+/// bottomSheetTheme, so it matches whichever UI the user picked.
 Future<void> showStreamSheet(
   BuildContext context, {
   required MetaItem meta,
@@ -22,10 +26,6 @@ Future<void> showStreamSheet(
   return showModalBottomSheet(
     context: context,
     isScrollControlled: true,
-    backgroundColor: BurnerColors.surface,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
-    ),
     builder: (_) => StreamSheet(
       meta: meta,
       videoId: videoId,
@@ -75,13 +75,14 @@ class _StreamSheetState extends State<StreamSheet> {
       query: widget.meta.name,
     ).catchError((_) => <StreamItem>[]);
 
-    final cloudStream = SourceAggregator.cloudStreamStreams(
-      repos: sources.activeRepos,
-      meta: widget.meta,
-    );
+    final providerFuture = sources.cloudStreamEnabled
+        ? WebProviders.resolve(meta: widget.meta, videoId: widget.videoId)
+            .catchError((_) => <StreamItem>[])
+        : Future.value(<StreamItem>[]);
 
-    final results = await Future.wait([addonFuture, telegramFuture]);
-    return SourceAggregator.combine([results[0], results[1], cloudStream]);
+    final results =
+        await Future.wait([addonFuture, telegramFuture, providerFuture]);
+    return SourceAggregator.combine(results);
   }
 
   void _play(StreamItem stream) {
@@ -90,6 +91,7 @@ class _StreamSheetState extends State<StreamSheet> {
       MaterialPageRoute(
         builder: (_) => PlayerScreen(
           streamUrl: stream.url!,
+          headers: stream.headers,
           title: widget.videoLabel != null
               ? '${widget.meta.name} \u2022 ${widget.videoLabel}'
               : widget.meta.name,
@@ -112,6 +114,7 @@ class _StreamSheetState extends State<StreamSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return DraggableScrollableSheet(
       expand: false,
       initialChildSize: 0.6,
@@ -125,7 +128,7 @@ class _StreamSheetState extends State<StreamSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: BurnerColors.stroke,
+                color: skin.stroke,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -133,8 +136,7 @@ class _StreamSheetState extends State<StreamSheet> {
               padding: const EdgeInsets.fromLTRB(20, 14, 20, 6),
               child: Row(
                 children: [
-                  const Icon(Icons.play_circle_fill_rounded,
-                      color: BurnerColors.purple),
+                  Icon(Icons.play_circle_fill_rounded, color: skin.accent),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -156,11 +158,11 @@ class _StreamSheetState extends State<StreamSheet> {
                 future: _future,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState != ConnectionState.done) {
-                    return const Center(
-                        child: CircularProgressIndicator(
-                            color: BurnerColors.purple));
+                    return Center(
+                      child: CircularProgressIndicator(color: skin.accent),
+                    );
                   }
-                  final streams = snapshot.data ?? const <StreamItem>[];
+                  final streams = snapshot.data ?? <StreamItem>[];
                   if (streams.isEmpty) {
                     return _EmptyStreams(error: snapshot.hasError);
                   }
@@ -181,11 +183,11 @@ class _StreamSheetState extends State<StreamSheet> {
                               padding: const EdgeInsets.fromLTRB(6, 10, 6, 6),
                               child: Text(
                                 stream.sourceLabel.toUpperCase(),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 10.5,
                                   letterSpacing: 1.2,
                                   fontWeight: FontWeight.w800,
-                                  color: BurnerColors.textSecondary,
+                                  color: skin.textSecondary,
                                 ),
                               ),
                             ),
@@ -229,11 +231,12 @@ class _StreamTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     final IconData icon;
     final String hint;
     if (stream.isPlayable) {
       icon = Icons.play_arrow_rounded;
-      hint = 'Play in Burner';
+      hint = 'Play in app';
     } else if (stream.isExternal || stream.isYouTube) {
       icon = Icons.open_in_new_rounded;
       hint = 'Opens externally';
@@ -243,11 +246,11 @@ class _StreamTile extends StatelessWidget {
     }
 
     return Material(
-      color: BurnerColors.card,
-      borderRadius: BorderRadius.circular(10),
+      color: skin.card,
+      borderRadius: skin.cardBorderRadius,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: skin.cardBorderRadius,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
@@ -256,8 +259,8 @@ class _StreamTile extends StatelessWidget {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  gradient: stream.isPlayable ? BurnerColors.brand : null,
-                  color: stream.isPlayable ? null : BurnerColors.stroke,
+                  gradient: stream.isPlayable ? skin.brand : null,
+                  color: stream.isPlayable ? null : skin.stroke,
                   borderRadius: BorderRadius.circular(19),
                 ),
                 child: Icon(icon, color: Colors.white, size: 22),
@@ -282,8 +285,8 @@ class _StreamTile extends StatelessWidget {
                       ].join('  \u2022  '),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontSize: 11.5, color: BurnerColors.textSecondary),
+                      style: TextStyle(
+                          fontSize: 11.5, color: skin.textSecondary),
                     ),
                   ],
                 ),
@@ -302,26 +305,25 @@ class _EmptyStreams extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(28),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.cloud_off_rounded,
-                size: 44, color: BurnerColors.textSecondary),
+            Icon(Icons.cloud_off_rounded, size: 44, color: skin.textSecondary),
             const SizedBox(height: 12),
             Text(
               error ? 'Could not load streams.' : 'No streams found.',
-              style:
-                  const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                  fontSize: 15, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 6),
-            const Text(
-              'Add a streaming addon, a CloudStream repo or Telegram in Profile \u2192 Content discovery to get sources for this title.',
+            Text(
+              'Add a streaming addon, an in-app provider or Telegram in Profile \u2192 Content discovery to get sources for this title.',
               textAlign: TextAlign.center,
-              style:
-                  TextStyle(color: BurnerColors.textSecondary, fontSize: 13),
+              style: TextStyle(color: skin.textSecondary, fontSize: 13),
             ),
           ],
         ),

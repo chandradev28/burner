@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../core/responsive.dart';
-import '../core/theme.dart';
 import '../models/meta.dart';
 import '../providers/addon_provider.dart';
+import '../providers/skin_provider.dart';
 import '../services/addon_client.dart';
 import '../widgets/poster_card.dart';
 
@@ -79,9 +79,10 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: BurnerColors.bg,
+        backgroundColor: skin.bg,
         title: TextField(
           controller: _controller,
           onChanged: _onChanged,
@@ -90,12 +91,11 @@ class _SearchScreenState extends State<SearchScreen> {
           autofocus: false,
           decoration: InputDecoration(
             hintText: 'Movies, shows, people...',
-            prefixIcon: const Icon(Icons.search_rounded,
-                color: BurnerColors.textSecondary),
+            prefixIcon: Icon(Icons.search_rounded, color: skin.textSecondary),
             suffixIcon: _controller.text.isNotEmpty
                 ? IconButton(
-                    icon: const Icon(Icons.close_rounded,
-                        color: BurnerColors.textSecondary),
+                    icon: Icon(Icons.close_rounded,
+                        color: skin.textSecondary),
                     onPressed: () {
                       _controller.clear();
                       _search('');
@@ -111,9 +111,9 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildBody() {
+    final skin = context.skin;
     if (_loading) {
-      return const Center(
-          child: CircularProgressIndicator(color: BurnerColors.purple));
+      return Center(child: CircularProgressIndicator(color: skin.accent));
     }
     if (_query.isEmpty) {
       return const _SearchHint(
@@ -127,7 +127,7 @@ class _SearchScreenState extends State<SearchScreen> {
       return _SearchHint(
         icon: Icons.search_off_rounded,
         title: 'No results for \u201c$_query\u201d',
-        subtitle: 'Try a different title or add more sources.',
+        subtitle: 'Try a different title or install more addons.',
       );
     }
     final r = Responsive.of(context);
@@ -159,13 +159,14 @@ class _SearchHint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(28),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 48, color: BurnerColors.textSecondary),
+            Icon(icon, size: 48, color: skin.textSecondary),
             const SizedBox(height: 14),
             Text(title,
                 textAlign: TextAlign.center,
@@ -174,8 +175,7 @@ class _SearchHint extends StatelessWidget {
             const SizedBox(height: 6),
             Text(subtitle,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                    color: BurnerColors.textSecondary, fontSize: 13)),
+                style: TextStyle(color: skin.textSecondary, fontSize: 13)),
           ],
         ),
       ),
