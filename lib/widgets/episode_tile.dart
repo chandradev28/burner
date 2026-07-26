@@ -1,10 +1,11 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
-import '../core/theme.dart';
 import '../models/meta.dart';
+import '../providers/skin_provider.dart';
 
-/// Episode row: thumbnail + title + overview, HBO Max style.
+/// Episode row: thumbnail + title + overview. Radii and accent colors follow
+/// the active skin.
 class EpisodeTile extends StatelessWidget {
   final Video video;
   final VoidCallback onTap;
@@ -20,6 +21,7 @@ class EpisodeTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final released = video.isReleased;
+    final skin = context.skin;
     return InkWell(
       onTap: released ? onTap : null,
       borderRadius: BorderRadius.circular(10),
@@ -35,7 +37,7 @@ class EpisodeTile extends StatelessWidget {
                 child: Column(
                   children: [
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: skin.posterBorderRadius,
                       child: AspectRatio(
                         aspectRatio: 16 / 9,
                         child: Stack(
@@ -46,11 +48,11 @@ class EpisodeTile extends StatelessWidget {
                                     imageUrl: video.thumbnail!,
                                     fit: BoxFit.cover,
                                     placeholder: (_, __) =>
-                                        Container(color: BurnerColors.card),
+                                        Container(color: skin.card),
                                     errorWidget: (_, __, ___) =>
-                                        Container(color: BurnerColors.card),
+                                        Container(color: skin.card),
                                   )
-                                : Container(color: BurnerColors.card),
+                                : Container(color: skin.card),
                             const Center(
                               child: Icon(Icons.play_circle_outline_rounded,
                                   size: 34, color: Colors.white70),
@@ -62,8 +64,8 @@ class EpisodeTile extends StatelessWidget {
                                   value: progress,
                                   minHeight: 3,
                                   backgroundColor: Colors.white24,
-                                  valueColor: const AlwaysStoppedAnimation(
-                                      BurnerColors.purple),
+                                  valueColor:
+                                      AlwaysStoppedAnimation(skin.accent),
                                 ),
                               ),
                           ],
@@ -84,16 +86,23 @@ class EpisodeTile extends StatelessWidget {
                           : video.name,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w700, fontSize: 14),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        letterSpacing: skin.isAppleTv ? -0.2 : 0,
+                        color: skin.textPrimary,
+                      ),
                     ),
                     if (!released)
-                      const Padding(
-                        padding: EdgeInsets.only(top: 4),
-                        child: Text('Coming soon',
-                            style: TextStyle(
-                                color: BurnerColors.textSecondary,
-                                fontSize: 12)),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          'Coming soon',
+                          style: TextStyle(
+                            color: skin.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
                       ),
                     if (video.overview != null &&
                         video.overview!.trim().isNotEmpty)
@@ -103,8 +112,8 @@ class EpisodeTile extends StatelessWidget {
                           video.overview!,
                           maxLines: 3,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: BurnerColors.textSecondary,
+                          style: TextStyle(
+                            color: skin.textSecondary,
                             fontSize: 12.5,
                             height: 1.35,
                           ),
