@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../core/constants.dart';
 import '../core/responsive.dart';
-import '../core/theme.dart';
 import '../providers/addon_provider.dart';
 import '../providers/library_provider.dart';
+import '../providers/skin_provider.dart';
 import '../providers/sources_provider.dart';
-import '../widgets/common.dart';
+import 'appearance_screen.dart';
 import 'content_discovery_screen.dart';
 
-/// Profile & settings: content discovery, data controls, about.
+/// Profile & settings: appearance, content discovery, data controls, about.
+/// Fully skin-aware - colors, radii and the header title follow the active UI.
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
@@ -19,59 +19,76 @@ class ProfileScreen extends StatelessWidget {
     final addonCount = context.watch<AddonProvider>().addons.length;
     final library = context.watch<LibraryProvider>();
     final sources = context.watch<SourcesProvider>();
+    final skin = context.skin;
     final r = Responsive.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: BurnerColors.bg,
-        title: const Text('Profile',
-            style: TextStyle(fontWeight: FontWeight.w800)),
-      ),
+      appBar: AppBar(title: Text(skin.navLabels[3])),
       body: ListView(
         padding: EdgeInsets.fromLTRB(r.gutter, 8, r.gutter, r.bottomSafePadding),
         children: [
-          // Profile header
+          // Header (no wordmark - just the avatar and a content summary).
           Row(
             children: [
               Container(
                 width: 64,
                 height: 64,
-                decoration: const BoxDecoration(
-                  gradient: BurnerColors.brand,
-                  shape: BoxShape.circle,
+                decoration: BoxDecoration(
+                  gradient: skin.brand,
+                  borderRadius: BorderRadius.circular(
+                    skin.isNetflix ? 6 : (skin.isAppleTv ? 20 : 32),
+                  ),
                 ),
                 alignment: Alignment.center,
-                child: const Text('B',
-                    style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white)),
+                child: const Icon(Icons.person_rounded,
+                    size: 32, color: Colors.white),
               ),
               const SizedBox(width: 14),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Burner',
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Your profile',
                       style: TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 3),
-                  Text(
-                    '$addonCount addon${addonCount == 1 ? '' : 's'} \u2022 ${library.watchlist.length} in My List',
-                    style: const TextStyle(
-                        color: BurnerColors.textSecondary, fontSize: 12.5),
-                  ),
-                ],
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: skin.isAppleTv ? -0.4 : 0,
+                        color: skin.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '$addonCount addon${addonCount == 1 ? '' : 's'} \u2022 ${library.watchlist.length} saved \u2022 ${skin.name} UI',
+                      style: TextStyle(
+                        color: skin.textSecondary,
+                        fontSize: 12.5,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
           const SizedBox(height: 22),
 
-          _SectionLabel('Content discovery'),
+          const _SectionLabel('Appearance'),
+          _SettingsTile(
+            icon: Icons.palette_outlined,
+            title: 'App style',
+            subtitle: 'Currently ${skin.name} \u2022 tap to switch UI',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const AppearanceScreen()),
+            ),
+          ),
+          const SizedBox(height: 18),
+
+          const _SectionLabel('Content discovery'),
           _SettingsTile(
             icon: Icons.travel_explore_rounded,
             title: 'Content discovery',
             subtitle:
-                'Addons \u2022 CloudStream repos \u2022 Telegram \u2022 combined results',
+                'Addons \u2022 in-app providers \u2022 Telegram \u2022 combined results',
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const ContentDiscoveryScreen()),
             ),
@@ -84,16 +101,15 @@ class ProfileScreen extends StatelessWidget {
           ),
           const SizedBox(height: 18),
 
-          _SectionLabel('Data'),
+          const _SectionLabel('Data'),
           _SettingsTile(
             icon: Icons.playlist_remove_rounded,
-            title: 'Clear My List',
+            title: 'Clear saved list',
             subtitle: 'Remove all saved titles',
             onTap: () => _confirm(
               context,
-              title: 'Clear My List?',
-              action: () =>
-                  context.read<LibraryProvider>().clearWatchlist(),
+              title: 'Clear saved list?',
+              action: () => context.read<LibraryProvider>().clearWatchlist(),
             ),
           ),
           _SettingsTile(
@@ -103,34 +119,38 @@ class ProfileScreen extends StatelessWidget {
             onTap: () => _confirm(
               context,
               title: 'Clear watch history?',
-              action: () =>
-                  context.read<LibraryProvider>().clearProgress(),
+              action: () => context.read<LibraryProvider>().clearProgress(),
             ),
           ),
           const SizedBox(height: 18),
 
-          _SectionLabel('About'),
+          const _SectionLabel('About'),
           _SettingsTile(
-            icon: Icons.local_fire_department_rounded,
-            title: 'About Burner',
+            icon: Icons.info_outline_rounded,
+            title: 'About this app',
             subtitle: 'Version 1.0.0',
-            onTap: () => showAboutDialog(
+            onTap: () => showDialog<void>(
               context: context,
-              applicationName: 'Burner',
-              applicationVersion: '1.0.0',
-              applicationIcon: const GradientText(
-                BurnerConstants.appName,
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 2),
-              ),
-              children: const [
-                Text(
-                  'A movies & TV app powered by Stremio addons, CloudStream repositories and Telegram. Burner hosts no content \u2014 catalogs, metadata and streams come from the sources you add. Only use sources that serve content you have the right to access.',
-                  style: TextStyle(fontSize: 13, height: 1.45),
+              builder: (dialogContext) => AlertDialog(
+                title: const Text('About this app'),
+                content: Text(
+                  'Version 1.0.0\n\nA movies & TV app powered by Stremio addons and '
+                  'in-app source providers. No content is hosted here \u2014 catalogs, '
+                  'metadata and streams come from the sources you enable. Only use '
+                  'sources that serve content you have the right to access.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.45,
+                    color: skin.textSecondary,
+                  ),
                 ),
-              ],
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: const Text('Close'),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -143,19 +163,22 @@ class ProfileScreen extends StatelessWidget {
     required String title,
     required Future<void> Function() action,
   }) async {
+    final skin = context.skinOnce;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(title),
-        content: const Text('This cannot be undone.',
-            style: TextStyle(color: BurnerColors.textSecondary)),
+        content: Text(
+          'This cannot be undone.',
+          style: TextStyle(color: skin.textSecondary),
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-            style:
-                FilledButton.styleFrom(backgroundColor: BurnerColors.danger),
+            style: FilledButton.styleFrom(backgroundColor: skin.danger),
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: const Text('Clear'),
           ),
@@ -181,10 +204,11 @@ class _DiscoverySummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     final chips = <String>[
       '$addons addon${addons == 1 ? '' : 's'}',
-      '$repos CS repo${repos == 1 ? '' : 's'}',
-      if (plugins > 0) '$plugins providers',
+      '$repos repo${repos == 1 ? '' : 's'}',
+      if (plugins > 0) '$plugins indexed',
       if (telegram) 'Telegram on',
     ];
     return Padding(
@@ -195,18 +219,17 @@ class _DiscoverySummary extends StatelessWidget {
         children: [
           for (final chip in chips)
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: BurnerColors.card,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: BurnerColors.stroke),
+                color: skin.card,
+                borderRadius: BorderRadius.circular(skin.isNetflix ? 4 : 20),
+                border: Border.all(color: skin.stroke),
               ),
               child: Text(
                 chip,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11.5,
-                  color: BurnerColors.textSecondary,
+                  color: skin.textSecondary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -223,15 +246,16 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8, left: 2),
       child: Text(
-        text.toUpperCase(),
-        style: const TextStyle(
-          fontSize: 11,
-          letterSpacing: 1.2,
+        skin.isAppleTv ? text : text.toUpperCase(),
+        style: TextStyle(
+          fontSize: skin.isAppleTv ? 13 : 11,
+          letterSpacing: skin.isAppleTv ? -0.2 : 1.2,
           fontWeight: FontWeight.w700,
-          color: BurnerColors.textSecondary,
+          color: skin.textSecondary,
         ),
       ),
     );
@@ -253,38 +277,47 @@ class _SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
+    final radius = skin.cardBorderRadius;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
-        color: BurnerColors.card,
-        borderRadius: BorderRadius.circular(12),
+        color: skin.card,
+        borderRadius: radius,
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: radius,
           onTap: onTap,
           child: Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
             child: Row(
               children: [
-                Icon(icon, color: BurnerColors.purple, size: 24),
+                Icon(icon, color: skin.accent, size: 24),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w600, fontSize: 14.5)),
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14.5,
+                          letterSpacing: skin.isAppleTv ? -0.2 : 0,
+                          color: skin.textPrimary,
+                        ),
+                      ),
                       const SizedBox(height: 2),
-                      Text(subtitle,
-                          style: const TextStyle(
-                              color: BurnerColors.textSecondary,
-                              fontSize: 12)),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          color: skin.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right_rounded,
-                    color: BurnerColors.textSecondary),
+                Icon(Icons.chevron_right_rounded, color: skin.textSecondary),
               ],
             ),
           ),
