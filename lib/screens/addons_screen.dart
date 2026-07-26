@@ -2,14 +2,15 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../core/theme.dart';
+import '../core/skins.dart';
 import '../models/addon.dart';
 import '../providers/addon_provider.dart';
 import '../providers/catalog_provider.dart';
+import '../providers/skin_provider.dart';
 import '../widgets/common.dart';
 
 /// Addon manager: list installed Stremio addons, add new ones by
-/// manifest URL, and remove existing ones.
+/// manifest URL, and remove existing ones. Fully skin-aware.
 class AddonsScreen extends StatelessWidget {
   const AddonsScreen({super.key});
 
@@ -18,6 +19,7 @@ class AddonsScreen extends StatelessWidget {
     final addonProvider = context.read<AddonProvider>();
     final catalogProvider = context.read<CatalogProvider>();
     final messenger = ScaffoldMessenger.of(context);
+    final skin = context.skinOnce;
 
     await showDialog<void>(
       context: context,
@@ -32,10 +34,10 @@ class AddonsScreen extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Paste a Stremio addon manifest URL. stremio:// links are supported.',
-                    style: TextStyle(
-                        color: BurnerColors.textSecondary, fontSize: 13),
+                    style:
+                        TextStyle(color: skin.textSecondary, fontSize: 13),
                   ),
                   const SizedBox(height: 12),
                   TextField(
@@ -50,8 +52,8 @@ class AddonsScreen extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.only(top: 10),
                       child: Text(error!,
-                          style: const TextStyle(
-                              color: BurnerColors.danger, fontSize: 12.5)),
+                          style:
+                              TextStyle(color: skin.danger, fontSize: 12.5)),
                     ),
                 ],
               ),
@@ -62,8 +64,7 @@ class AddonsScreen extends StatelessWidget {
                   child: const Text('Cancel'),
                 ),
                 FilledButton(
-                  style: FilledButton.styleFrom(
-                      backgroundColor: BurnerColors.purple),
+                  style: FilledButton.styleFrom(backgroundColor: skin.accent),
                   onPressed: busy
                       ? null
                       : () async {
@@ -74,12 +75,10 @@ class AddonsScreen extends StatelessWidget {
                             error = null;
                           });
                           try {
-                            final addon =
-                                await addonProvider.addAddon(url);
+                            final addon = await addonProvider.addAddon(url);
                             // Rebuild home rails with the new addon.
-                            await catalogProvider.loadHome(
-                                addonProvider.addons,
-                                force: true);
+                            await catalogProvider
+                                .loadHome(addonProvider.addons, force: true);
                             if (dialogContext.mounted) {
                               Navigator.of(dialogContext).pop();
                             }
@@ -111,15 +110,16 @@ class AddonsScreen extends StatelessWidget {
   }
 
   Future<void> _confirmRemove(BuildContext context, Addon addon) async {
+    final skin = context.skinOnce;
     final addonProvider = context.read<AddonProvider>();
     final catalogProvider = context.read<CatalogProvider>();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text('Remove \u201c${addon.name}\u201d?'),
-        content: const Text(
+        content: Text(
           'Its catalogs and streams will no longer be available.',
-          style: TextStyle(color: BurnerColors.textSecondary),
+          style: TextStyle(color: skin.textSecondary),
         ),
         actions: [
           TextButton(
@@ -127,8 +127,7 @@ class AddonsScreen extends StatelessWidget {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            style:
-                FilledButton.styleFrom(backgroundColor: BurnerColors.danger),
+            style: FilledButton.styleFrom(backgroundColor: skin.danger),
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: const Text('Remove'),
           ),
@@ -143,16 +142,17 @@ class AddonsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     final addons = context.watch<AddonProvider>().addons;
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: BurnerColors.bg,
+        backgroundColor: skin.bg,
         title: const Text('Addons',
             style: TextStyle(fontWeight: FontWeight.w800)),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: BurnerColors.purple,
+        backgroundColor: skin.accent,
         foregroundColor: Colors.white,
         onPressed: () => _showAddDialog(context),
         icon: const Icon(Icons.add_rounded),
@@ -165,18 +165,18 @@ class AddonsScreen extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.extension_off_outlined,
-                        size: 48, color: BurnerColors.textSecondary),
+                    Icon(Icons.extension_off_outlined,
+                        size: 48, color: skin.textSecondary),
                     const SizedBox(height: 14),
                     const Text('No addons installed',
                         style: TextStyle(
                             fontSize: 16, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 6),
-                    const Text(
+                    Text(
                       'Add a Stremio addon to load catalogs, metadata and streams.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                          color: BurnerColors.textSecondary, fontSize: 13),
+                      style:
+                          TextStyle(color: skin.textSecondary, fontSize: 13),
                     ),
                     const SizedBox(height: 16),
                     GradientButton(
@@ -212,20 +212,21 @@ class _AddonTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     final manifest = addon.manifest;
     final capabilities = manifest.resources.map((r) => r.name).toSet().toList();
 
     return Container(
       decoration: BoxDecoration(
-        color: BurnerColors.card,
-        borderRadius: BorderRadius.circular(12),
+        color: skin.card,
+        borderRadius: skin.cardBorderRadius,
       ),
       padding: const EdgeInsets.all(12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(skin.posterRadius),
             child: SizedBox(
               width: 46,
               height: 46,
@@ -233,9 +234,9 @@ class _AddonTile extends StatelessWidget {
                   ? CachedNetworkImage(
                       imageUrl: manifest.logo!,
                       fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => _logoFallback(),
+                      errorWidget: (_, __, ___) => _logoFallback(skin),
                     )
-                  : _logoFallback(),
+                  : _logoFallback(skin),
             ),
           ),
           const SizedBox(width: 12),
@@ -253,8 +254,8 @@ class _AddonTile extends StatelessWidget {
                       manifest.description,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          color: BurnerColors.textSecondary,
+                      style: TextStyle(
+                          color: skin.textSecondary,
                           fontSize: 12.5,
                           height: 1.35),
                     ),
@@ -264,9 +265,9 @@ class _AddonTile extends StatelessWidget {
                   spacing: 6,
                   runSpacing: 6,
                   children: [
-                    for (final cap in capabilities) _chip(cap),
+                    for (final cap in capabilities) _chip(skin, cap),
                     for (final type in manifest.types.take(4))
-                      _chip(type, outlined: true),
+                      _chip(skin, type, outlined: true),
                   ],
                 ),
               ],
@@ -274,8 +275,8 @@ class _AddonTile extends StatelessWidget {
           ),
           IconButton(
             tooltip: 'Remove addon',
-            icon: const Icon(Icons.delete_outline_rounded,
-                color: BurnerColors.textSecondary),
+            icon: Icon(Icons.delete_outline_rounded,
+                color: skin.textSecondary),
             onPressed: onRemove,
           ),
         ],
@@ -283,9 +284,9 @@ class _AddonTile extends StatelessWidget {
     );
   }
 
-  Widget _logoFallback() {
+  Widget _logoFallback(SkinData skin) {
     return Container(
-      decoration: const BoxDecoration(gradient: BurnerColors.brand),
+      decoration: BoxDecoration(gradient: skin.brand),
       alignment: Alignment.center,
       child: Text(
         addon.name.isNotEmpty ? addon.name[0].toUpperCase() : '?',
@@ -295,17 +296,16 @@ class _AddonTile extends StatelessWidget {
     );
   }
 
-  Widget _chip(String label, {bool outlined = false}) {
+  Widget _chip(SkinData skin, String label, {bool outlined = false}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: outlined ? Colors.transparent : BurnerColors.stroke,
-        border: outlined ? Border.all(color: BurnerColors.stroke) : null,
+        color: outlined ? Colors.transparent : skin.stroke,
+        border: outlined ? Border.all(color: skin.stroke) : null,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(label,
-          style: const TextStyle(
-              fontSize: 10.5, color: BurnerColors.textSecondary)),
+          style: TextStyle(fontSize: 10.5, color: skin.textSecondary)),
     );
   }
 }

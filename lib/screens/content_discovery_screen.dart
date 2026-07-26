@@ -2,20 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../core/responsive.dart';
-import '../core/theme.dart';
 import '../providers/addon_provider.dart';
+import '../providers/skin_provider.dart';
 import '../providers/sources_provider.dart';
 import 'addons_screen.dart';
 import 'cloudstream_screen.dart';
 import 'telegram_screen.dart';
 
-/// Single hub for every place Burner can pull content from:
-/// Stremio addons, CloudStream repositories and Telegram.
+/// Single hub for every place the app can pull content from:
+/// Stremio addons, in-app providers / CloudStream repos, and Telegram.
 class ContentDiscoveryScreen extends StatelessWidget {
   const ContentDiscoveryScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     final r = Responsive.of(context);
     final addons = context.watch<AddonProvider>();
     final sources = context.watch<SourcesProvider>();
@@ -24,7 +25,7 @@ class ContentDiscoveryScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: BurnerColors.bg,
+        backgroundColor: skin.bg,
         title: const Text('Content discovery',
             style: TextStyle(fontWeight: FontWeight.w800)),
       ),
@@ -39,16 +40,17 @@ class ContentDiscoveryScreen extends StatelessWidget {
             subtitle:
                 '${addons.addons.length} installed \u2022 catalogs, metadata and streams',
             enabled: sources.addonsEnabled,
-            onToggle: (v) => context.read<SourcesProvider>().setAddonsEnabled(v),
+            onToggle: (v) =>
+                context.read<SourcesProvider>().setAddonsEnabled(v),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const AddonsScreen()),
             ),
           ),
           _SourceCard(
             icon: Icons.cloud_sync_rounded,
-            title: 'CloudStream repositories',
+            title: 'In-app providers & CloudStream repos',
             subtitle: sources.repos.isEmpty
-                ? 'Add any CloudStream repo \u2022 official repos included'
+                ? 'Built-in scrapers \u2022 add any CloudStream repo for reference'
                 : '${sources.repos.length} repo${sources.repos.length == 1 ? '' : 's'} \u2022 ${sources.pluginCount} providers indexed',
             enabled: sources.cloudStreamEnabled,
             onToggle: (v) =>
@@ -92,32 +94,31 @@ class _Intro extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            BurnerColors.purple.withOpacity(0.22),
-            BurnerColors.blue.withOpacity(0.12),
+            skin.accent.withOpacity(0.22),
+            skin.accentAlt.withOpacity(0.12),
           ],
         ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: BurnerColors.stroke),
+        borderRadius: skin.cardBorderRadius,
+        border: Border.all(color: skin.stroke),
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Choose where to watch',
+          const Text('Choose where to watch',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-          SizedBox(height: 6),
+          const SizedBox(height: 6),
           Text(
-            'Turn sources on or off here. When you open a title, Burner queries '
-            'every enabled source at once and merges the results into one '
+            'Turn sources on or off here. When you open a title, every enabled '
+            'source is queried at once and the results are merged into one '
             'stream list, grouped by where each link came from.',
             style: TextStyle(
-                fontSize: 12.5,
-                height: 1.45,
-                color: BurnerColors.textSecondary),
+                fontSize: 12.5, height: 1.45, color: skin.textSecondary),
           ),
         ],
       ),
@@ -130,29 +131,28 @@ class _CombineNote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: BurnerColors.card,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: BurnerColors.stroke),
+        color: skin.card,
+        borderRadius: skin.cardBorderRadius,
+        border: Border.all(color: skin.stroke),
       ),
-      child: const Row(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(Icons.info_outline_rounded,
-              size: 18, color: BurnerColors.textSecondary),
-          SizedBox(width: 10),
+              size: 18, color: skin.textSecondary),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'CloudStream providers ship as Android .cs3 plugins. Burner reads '
-              'every repo you add and indexes its providers, but a plugin\'s own '
-              'scraper code runs only inside CloudStream \u2014 those entries open '
-              'externally. Addon and Telegram links play natively in Burner.',
+              'CloudStream providers ship as Android .cs3 plugins, so their own '
+              'scraper code cannot run here. Repos you add are indexed for '
+              'reference, while the built-in providers, addons and Telegram '
+              'links resolve to real video URLs and play in the app.',
               style: TextStyle(
-                  fontSize: 11.5,
-                  height: 1.45,
-                  color: BurnerColors.textSecondary),
+                  fontSize: 11.5, height: 1.45, color: skin.textSecondary),
             ),
           ),
         ],
@@ -180,21 +180,20 @@ class _SourceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: BurnerColors.surface,
-        borderRadius: BorderRadius.circular(16),
+        color: skin.surface,
+        borderRadius: skin.cardBorderRadius,
         border: Border.all(
-          color: enabled
-              ? BurnerColors.purple.withOpacity(0.35)
-              : BurnerColors.stroke,
+          color: enabled ? skin.accent.withOpacity(0.35) : skin.stroke,
         ),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: skin.cardBorderRadius,
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(14, 14, 8, 14),
@@ -204,15 +203,13 @@ class _SourceCard extends StatelessWidget {
                   width: 42,
                   height: 42,
                   decoration: BoxDecoration(
-                    gradient: enabled ? BurnerColors.brand : null,
-                    color: enabled ? null : BurnerColors.card,
-                    borderRadius: BorderRadius.circular(12),
+                    gradient: enabled ? skin.brand : null,
+                    color: enabled ? null : skin.card,
+                    borderRadius: BorderRadius.circular(skin.posterRadius),
                   ),
                   child: Icon(icon,
                       size: 20,
-                      color: enabled
-                          ? Colors.white
-                          : BurnerColors.textSecondary),
+                      color: enabled ? Colors.white : skin.textSecondary),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -225,17 +222,17 @@ class _SourceCard extends StatelessWidget {
                       const SizedBox(height: 3),
                       Text(
                         subtitle,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 11.5,
                             height: 1.35,
-                            color: BurnerColors.textSecondary),
+                            color: skin.textSecondary),
                       ),
                     ],
                   ),
                 ),
                 Switch(
                   value: enabled,
-                  activeColor: BurnerColors.purple,
+                  activeColor: skin.accent,
                   onChanged: onToggle,
                 ),
               ],
