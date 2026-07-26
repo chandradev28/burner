@@ -13,6 +13,9 @@ class StorageService {
   static const String telegramConfigKey = 'burner.telegram.config';
   static const String sourceTogglesKey = 'burner.sources.toggles';
 
+  // Appearance
+  static const String skinKey = 'burner.ui.skin';
+
   static SharedPreferences? _prefs;
 
   static Future<SharedPreferences> get prefs async {

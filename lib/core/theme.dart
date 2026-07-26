@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 
+import 'skins.dart';
+
 /// HBO Max inspired palette: near-black backgrounds with a purple->blue
 /// brand gradient and soft light-gray typography.
+///
+/// This is the default (HBO Max) palette only. Live UI colors come from the
+/// active [SkinData] - see `lib/core/skins.dart`.
 class BurnerColors {
   BurnerColors._();
 
@@ -32,60 +37,6 @@ class BurnerColors {
   );
 }
 
-ThemeData buildBurnerTheme() {
-  final base = ThemeData(
-    useMaterial3: true,
-    brightness: Brightness.dark,
-    scaffoldBackgroundColor: BurnerColors.bg,
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: BurnerColors.purple,
-      brightness: Brightness.dark,
-      surface: BurnerColors.surface,
-    ),
-  );
-
-  return base.copyWith(
-    appBarTheme: const AppBarTheme(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      centerTitle: false,
-      foregroundColor: BurnerColors.textPrimary,
-    ),
-    textTheme: base.textTheme.apply(
-      bodyColor: BurnerColors.textPrimary,
-      displayColor: BurnerColors.textPrimary,
-    ),
-    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-      backgroundColor: Color(0xF00A0A12),
-      selectedItemColor: BurnerColors.textPrimary,
-      unselectedItemColor: BurnerColors.textSecondary,
-      type: BottomNavigationBarType.fixed,
-      showUnselectedLabels: true,
-    ),
-    snackBarTheme: SnackBarThemeData(
-      backgroundColor: BurnerColors.card,
-      contentTextStyle: const TextStyle(color: BurnerColors.textPrimary),
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-    ),
-    dialogTheme: DialogThemeData(
-      backgroundColor: BurnerColors.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-    ),
-    inputDecorationTheme: InputDecorationTheme(
-      filled: true,
-      fillColor: BurnerColors.card,
-      hintStyle: const TextStyle(color: BurnerColors.textSecondary),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide.none,
-      ),
-    ),
-    dividerColor: BurnerColors.stroke,
-    tabBarTheme: const TabBarThemeData(
-      labelColor: BurnerColors.textPrimary,
-      unselectedLabelColor: BurnerColors.textSecondary,
-      indicatorColor: BurnerColors.purple,
-    ),
-  );
-}
+/// Default theme (HBO Max skin). The live app theme is built per-skin by
+/// [buildSkinTheme]; this remains for tooling / fallbacks.
+ThemeData buildBurnerTheme() => buildSkinTheme(SkinData.hbo);
