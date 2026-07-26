@@ -2,11 +2,13 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../core/responsive.dart';
-import '../core/theme.dart';
 import '../models/meta.dart';
+import '../providers/skin_provider.dart';
 import '../screens/detail_screen.dart';
 
 /// Poster tile (2:3) used in rails, grids and search results.
+/// Corner radius follows the active skin: Netflix is nearly square,
+/// Apple TV is heavily rounded, HBO sits in between.
 class PosterCard extends StatelessWidget {
   final MetaItem item;
 
@@ -23,6 +25,7 @@ class PosterCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return GestureDetector(
       onTap: () {
         Navigator.of(context).push(
@@ -37,16 +40,15 @@ class PosterCard extends StatelessWidget {
             AspectRatio(
               aspectRatio: 2 / 3,
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: skin.posterBorderRadius,
                 child: item.poster != null
                     ? CachedNetworkImage(
                         imageUrl: item.poster!,
                         fit: BoxFit.cover,
-                        placeholder: (_, __) =>
-                            Container(color: BurnerColors.card),
-                        errorWidget: (_, __, ___) => _fallback(),
+                        placeholder: (_, __) => Container(color: skin.card),
+                        errorWidget: (_, __, ___) => _fallback(context),
                       )
-                    : _fallback(),
+                    : _fallback(context),
               ),
             ),
             if (showTitle) ...[
@@ -55,10 +57,11 @@ class PosterCard extends StatelessWidget {
                 item.name,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
-                  color: BurnerColors.textSecondary,
+                  letterSpacing: skin.isAppleTv ? -0.2 : 0,
+                  color: skin.textSecondary,
                 ),
               ),
             ],
@@ -68,9 +71,10 @@ class PosterCard extends StatelessWidget {
     );
   }
 
-  Widget _fallback() {
+  Widget _fallback(BuildContext context) {
+    final skin = context.skin;
     return Container(
-      color: BurnerColors.card,
+      color: skin.card,
       alignment: Alignment.center,
       padding: const EdgeInsets.all(8),
       child: Text(
@@ -78,10 +82,10 @@ class PosterCard extends StatelessWidget {
         maxLines: 4,
         overflow: TextOverflow.ellipsis,
         textAlign: TextAlign.center,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          color: BurnerColors.textSecondary,
+          color: skin.textSecondary,
         ),
       ),
     );

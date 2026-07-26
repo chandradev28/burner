@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../core/responsive.dart';
 import '../models/meta.dart';
+import '../providers/skin_provider.dart';
 import 'poster_card.dart';
 
-/// A titled horizontal rail of posters (HBO Max style).
+/// A titled horizontal rail of posters. Title typography and spacing follow
+/// the active skin (Apple TV uses large tight titles, Netflix compact bold).
 class ContentRow extends StatelessWidget {
   final String title;
   final List<MetaItem> items;
@@ -15,17 +17,26 @@ class ContentRow extends StatelessWidget {
   Widget build(BuildContext context) {
     if (items.isEmpty) return const SizedBox.shrink();
     final r = Responsive.of(context);
+    final skin = context.skin;
+    final scale = r.isSmall ? 0.92 : 1.0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: EdgeInsets.fromLTRB(r.gutter, 20, r.gutter, 10),
+          padding: EdgeInsets.fromLTRB(
+            r.gutter,
+            skin.isAppleTv ? 24 : 20,
+            r.gutter,
+            skin.isAppleTv ? 12 : 10,
+          ),
           child: Text(
-            title,
+            skin.uppercaseRowTitles ? title.toUpperCase() : title,
             style: TextStyle(
-              fontSize: r.isSmall ? 15.5 : 17,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.2,
+              fontSize: skin.rowTitleSize * scale,
+              fontWeight: skin.rowTitleWeight,
+              letterSpacing: skin.rowTitleSpacing,
+              color: skin.textPrimary,
             ),
           ),
         ),
@@ -35,7 +46,9 @@ class ContentRow extends StatelessWidget {
             padding: EdgeInsets.symmetric(horizontal: r.gutter),
             scrollDirection: Axis.horizontal,
             itemCount: items.length,
-            separatorBuilder: (_, __) => SizedBox(width: r.isSmall ? 8 : 10),
+            separatorBuilder: (_, __) => SizedBox(
+              width: skin.isAppleTv ? 12 : (r.isSmall ? 8 : 10),
+            ),
             itemBuilder: (context, index) => PosterCard(item: items[index]),
           ),
         ),
