@@ -1,8 +1,14 @@
 name: Build Android APK
 
-# Builds run only when you start them by hand from the Actions tab.
+# Builds never run on ordinary code pushes.
+# They start either from the Actions tab (Run workflow) or when the .buildnow
+# file changes, which is the on-demand switch used from chat.
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".buildnow"
 
 jobs:
   android:
@@ -55,7 +61,6 @@ jobs:
           set -e
           git clone --depth 1 https://github.com/tdlib/td.git td-src
           cd td-src/example/android
-          # Only the ABIs Flutter ships for.
           export ANDROID_STL=c++_static
           ./build-openssl.sh
           ./build-tdlib.sh

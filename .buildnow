@@ -1,0 +1,5 @@
+# Touch this file to start a build.
+# Ordinary code pushes do not trigger CI; only changes to this file do.
+build: 1
+reason: Telegram account login (TDLib phone + OTP)
+requested: 2026-07-26 13:19 IST
