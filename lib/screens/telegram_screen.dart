@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../core/responsive.dart';
-import '../core/theme.dart';
 import '../models/telegram.dart';
+import '../providers/skin_provider.dart';
 import '../providers/sources_provider.dart';
 import '../widgets/common.dart';
 
 /// Connect a Telegram bot so channel video files show up as playable
-/// sources next to addon and CloudStream results.
+/// sources next to addon and provider results.
 class TelegramScreen extends StatefulWidget {
   const TelegramScreen({super.key});
 
@@ -61,35 +61,35 @@ class _TelegramScreenState extends State<TelegramScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     final r = Responsive.of(context);
     final sources = context.watch<SourcesProvider>();
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: BurnerColors.bg,
+        backgroundColor: skin.bg,
         title: const Text('Telegram',
             style: TextStyle(fontWeight: FontWeight.w800)),
       ),
       body: ListView(
-        padding: EdgeInsets.fromLTRB(r.gutter, 12, r.gutter, r.bottomSafePadding),
+        padding:
+            EdgeInsets.fromLTRB(r.gutter, 12, r.gutter, r.bottomSafePadding),
         children: [
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: BurnerColors.card,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: BurnerColors.stroke),
+              color: skin.card,
+              borderRadius: skin.cardBorderRadius,
+              border: Border.all(color: skin.stroke),
             ),
-            child: const Text(
+            child: Text(
               'Create a bot with @BotFather, add it as an administrator of the '
-              'channels you want to watch, then paste its token below. Burner '
-              'indexes video files the bot can see and plays them inline.\n\n'
+              'channels you want to watch, then paste its token below. Video '
+              'files the bot can see are indexed and played inline.\n\n'
               'Telegram\'s Bot API caps file downloads at 20 MB, so larger '
               'files are listed but open in Telegram instead.',
               style: TextStyle(
-                  fontSize: 11.5,
-                  height: 1.5,
-                  color: BurnerColors.textSecondary),
+                  fontSize: 11.5, height: 1.5, color: skin.textSecondary),
             ),
           ),
           const SizedBox(height: 16),
@@ -117,12 +117,12 @@ class _TelegramScreenState extends State<TelegramScreen> {
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             value: _enabled,
-            activeColor: BurnerColors.purple,
+            activeColor: skin.accent,
             title: const Text('Use Telegram as a source',
                 style: TextStyle(fontSize: 13.5)),
-            subtitle: const Text('Include Telegram files in combined results',
-                style: TextStyle(
-                    fontSize: 11.5, color: BurnerColors.textSecondary)),
+            subtitle: Text('Include Telegram files in combined results',
+                style:
+                    TextStyle(fontSize: 11.5, color: skin.textSecondary)),
             onChanged: (v) => setState(() => _enabled = v),
           ),
           const SizedBox(height: 8),
@@ -164,14 +164,15 @@ class _TelegramScreenState extends State<TelegramScreen> {
             const SizedBox(height: 16),
             if (sources.telegramIndex.isNotEmpty) ...[
               const Text('Indexed files',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                  style:
+                      TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
               const SizedBox(height: 8),
               for (final item in sources.telegramIndex.take(30))
                 ListTile(
                   dense: true,
                   contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.movie_outlined,
-                      size: 19, color: BurnerColors.textSecondary),
+                  leading: Icon(Icons.movie_outlined,
+                      size: 19, color: skin.textSecondary),
                   title: Text(item.caption,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -181,8 +182,8 @@ class _TelegramScreenState extends State<TelegramScreen> {
                       if (item.chat.isNotEmpty) '@${item.chat}',
                       if (item.sizeLabel.isNotEmpty) item.sizeLabel,
                     ].join(' \u2022 '),
-                    style: const TextStyle(
-                        fontSize: 11, color: BurnerColors.textSecondary),
+                    style:
+                        TextStyle(fontSize: 11, color: skin.textSecondary),
                   ),
                 ),
             ],

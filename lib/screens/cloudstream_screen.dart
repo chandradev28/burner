@@ -3,11 +3,12 @@ import 'package:provider/provider.dart';
 
 import '../core/constants.dart';
 import '../core/responsive.dart';
-import '../core/theme.dart';
 import '../models/cloudstream.dart';
+import '../providers/skin_provider.dart';
 import '../providers/sources_provider.dart';
 
 /// Add, refresh and curate CloudStream repositories and their providers.
+/// Colors, radii and switch tints all come from the active skin.
 class CloudStreamScreen extends StatefulWidget {
   const CloudStreamScreen({super.key});
 
@@ -41,12 +42,13 @@ class _CloudStreamScreenState extends State<CloudStreamScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     final r = Responsive.of(context);
     final sources = context.watch<SourcesProvider>();
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: BurnerColors.bg,
+        backgroundColor: skin.bg,
         title: const Text('CloudStream repos',
             style: TextStyle(fontWeight: FontWeight.w800)),
         actions: [
@@ -95,12 +97,11 @@ class _CloudStreamScreenState extends State<CloudStreamScreen> {
             children: [
               for (final entry in BurnerConstants.knownCloudStreamRepos.entries)
                 ActionChip(
-                  label: Text(entry.key,
-                      style: const TextStyle(fontSize: 11.5)),
-                  backgroundColor: BurnerColors.card,
-                  side: const BorderSide(color: BurnerColors.stroke),
-                  onPressed:
-                      sources.loading ? null : () => _add(entry.value),
+                  label:
+                      Text(entry.key, style: const TextStyle(fontSize: 11.5)),
+                  backgroundColor: skin.card,
+                  side: BorderSide(color: skin.stroke),
+                  onPressed: sources.loading ? null : () => _add(entry.value),
                 ),
             ],
           ),
@@ -120,30 +121,28 @@ class _EmptyRepos extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: BurnerColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: BurnerColors.stroke),
+        color: skin.surface,
+        borderRadius: skin.cardBorderRadius,
+        border: Border.all(color: skin.stroke),
       ),
-      child: const Column(
+      child: Column(
         children: [
-          Icon(Icons.cloud_off_rounded,
-              size: 34, color: BurnerColors.textSecondary),
-          SizedBox(height: 10),
-          Text('No repositories yet',
+          Icon(Icons.cloud_off_rounded, size: 34, color: skin.textSecondary),
+          const SizedBox(height: 10),
+          const Text('No repositories yet',
               style: TextStyle(fontWeight: FontWeight.w700)),
-          SizedBox(height: 6),
+          const SizedBox(height: 6),
           Text(
             'Paste any CloudStream repo URL above, or tap a quick-add chip. '
-            'Burner fetches every plugin list in the repo and indexes all of '
-            'its providers.',
+            'Every plugin list in the repo is fetched and all of its providers '
+            'are indexed for reference.',
             textAlign: TextAlign.center,
             style: TextStyle(
-                fontSize: 12,
-                height: 1.45,
-                color: BurnerColors.textSecondary),
+                fontSize: 12, height: 1.45, color: skin.textSecondary),
           ),
         ],
       ),
@@ -158,21 +157,22 @@ class _RepoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     final active = repo.activePlugins.length;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: BurnerColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: BurnerColors.stroke),
+        color: skin.surface,
+        borderRadius: skin.cardBorderRadius,
+        border: Border.all(color: skin.stroke),
       ),
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
           tilePadding: const EdgeInsets.symmetric(horizontal: 14),
           childrenPadding: const EdgeInsets.fromLTRB(6, 0, 6, 8),
-          iconColor: BurnerColors.textSecondary,
-          collapsedIconColor: BurnerColors.textSecondary,
+          iconColor: skin.textSecondary,
+          collapsedIconColor: skin.textSecondary,
           title: Text(repo.name,
               style: const TextStyle(
                   fontSize: 14.5, fontWeight: FontWeight.w700)),
@@ -180,8 +180,8 @@ class _RepoCard extends StatelessWidget {
             padding: const EdgeInsets.only(top: 3),
             child: Text(
               '$active of ${repo.plugins.length} providers on',
-              style: const TextStyle(
-                  fontSize: 11.5, color: BurnerColors.textSecondary),
+              style:
+                  TextStyle(fontSize: 11.5, color: skin.textSecondary),
             ),
           ),
           children: [
@@ -206,8 +206,8 @@ class _RepoCard extends StatelessWidget {
                   const Spacer(),
                   IconButton(
                     tooltip: 'Remove repository',
-                    icon: const Icon(Icons.delete_outline_rounded,
-                        size: 19, color: BurnerColors.danger),
+                    icon: Icon(Icons.delete_outline_rounded,
+                        size: 19, color: skin.danger),
                     onPressed: () =>
                         context.read<SourcesProvider>().removeRepo(repo),
                   ),
@@ -218,7 +218,7 @@ class _RepoCard extends StatelessWidget {
               SwitchListTile(
                 dense: true,
                 value: repo.isEnabled(plugin) && !plugin.isDown,
-                activeColor: BurnerColors.purple,
+                activeColor: skin.accent,
                 onChanged: plugin.isDown
                     ? null
                     : (v) => context
@@ -236,8 +236,8 @@ class _RepoCard extends StatelessWidget {
                   ].join(' \u2022 '),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontSize: 11, color: BurnerColors.textSecondary),
+                  style:
+                      TextStyle(fontSize: 11, color: skin.textSecondary),
                 ),
               ),
           ],
