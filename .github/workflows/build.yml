@@ -1,10 +1,8 @@
 name: Build Burner
 
+# Manual only. Builds never start automatically on push or pull request —
+# open the Actions tab, pick "Build Burner" and press "Run workflow".
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 
 jobs:
