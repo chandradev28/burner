@@ -10,6 +10,12 @@ on:
     paths:
       - ".buildnow"
 
+env:
+  # Prebuilt TDLib shared libraries for Android (libtdjson.so per ABI).
+  # Building TDLib from source needs ~40-80 min and kept failing silently, so
+  # the APK shipped without Telegram support. These are the same libs, prebuilt.
+  TDLIB_JNILIBS_URL: https://github.com/up9cloud/android-libtdjson/releases/download/v1.8.65/jniLibs.tar.gz
+
 jobs:
   android:
     name: Android APK
@@ -32,59 +38,63 @@ jobs:
           cache: true
 
       # ---------------------------------------------------------------- TDLib
-      # Telegram account login (phone + OTP) talks to TDLib over dart:ffi, so
-      # libtdjson.so has to be bundled per ABI. Every step below is optional:
-      # if the native build fails, the APK still ships and the app simply shows
-      # Telegram login as unavailable.
-      - name: Cache TDLib Android build
+      # Downloaded before the app steps, but bundled AFTER `flutter create` so
+      # the generated android/ tree cannot clobber the libs.
+      - name: Cache prebuilt TDLib
         id: tdlib-cache
         uses: actions/cache@v4
-        continue-on-error: true
         with:
-          path: tdlib-android
-          key: tdlib-android-v1-${{ runner.os }}
+          path: tdlib-prebuilt
+          key: tdlib-prebuilt-v1.8.65
 
-      - name: Install TDLib build dependencies
+      - name: Download prebuilt TDLib
         if: steps.tdlib-cache.outputs.cache-hit != 'true'
-        continue-on-error: true
         run: |
-          sudo apt-get update
-          sudo apt-get install -y make git zlib1g-dev libssl-dev gperf cmake ninja-build php-cli
-
-      - name: Build TDLib for Android
-        if: steps.tdlib-cache.outputs.cache-hit != 'true'
-        continue-on-error: true
-        timeout-minutes: 90
-        env:
-          ANDROID_SDK_ROOT: ${{ env.ANDROID_HOME }}
-        run: |
-          set -e
-          git clone --depth 1 https://github.com/tdlib/td.git td-src
-          cd td-src/example/android
-          export ANDROID_STL=c++_static
-          ./build-openssl.sh
-          ./build-tdlib.sh
-          cd "$GITHUB_WORKSPACE"
-          mkdir -p tdlib-android
-          cp -r td-src/example/android/tdlib/libs/* tdlib-android/ || true
-
-      - name: Bundle libtdjson into the app
-        continue-on-error: true
-        run: |
-          if [ -d tdlib-android ]; then
-            for abi in arm64-v8a armeabi-v7a x86_64; do
-              if [ -f "tdlib-android/$abi/libtdjson.so" ]; then
-                mkdir -p "android/app/src/main/jniLibs/$abi"
-                cp "tdlib-android/$abi/libtdjson.so" "android/app/src/main/jniLibs/$abi/"
-                echo "bundled libtdjson.so for $abi"
-              fi
-            done
-          fi
-          ls -R android/app/src/main/jniLibs 2>/dev/null || echo "no native libs bundled"
+          set -euo pipefail
+          mkdir -p tdlib-prebuilt
+          echo "Downloading $TDLIB_JNILIBS_URL"
+          curl -fsSL --retry 3 --retry-delay 5 -o jniLibs.tar.gz "$TDLIB_JNILIBS_URL"
+          ls -l jniLibs.tar.gz
+          tar -xzf jniLibs.tar.gz -C tdlib-prebuilt
+          echo "--- extracted tree ---"
+          find tdlib-prebuilt -name 'libtdjson.so' -printf '%p  %s bytes\n'
 
       # ------------------------------------------------------------------ App
       - name: Generate Android platform files
         run: flutter create . --project-name burner --org com.burner.app --platforms=android
+
+      - name: Bundle libtdjson into the app
+        run: |
+          set -euo pipefail
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            src=$(find tdlib-prebuilt -type f -path "*/$abi/libtdjson.so" | head -n 1 || true)
+            if [ -n "$src" ]; then
+              mkdir -p "android/app/src/main/jniLibs/$abi"
+              cp "$src" "android/app/src/main/jniLibs/$abi/libtdjson.so"
+              echo "bundled $abi from $src"
+            else
+              echo "WARNING: no libtdjson.so found for $abi"
+            fi
+          done
+          echo "--- jniLibs ---"
+          ls -lR android/app/src/main/jniLibs
+
+      # Hard gate: Telegram login is a shipped feature, so a missing native
+      # library must fail the build loudly instead of producing an APK that
+      # tells the user "Telegram login not available in this build".
+      - name: Verify TDLib is bundled
+        run: |
+          set -euo pipefail
+          if [ ! -f android/app/src/main/jniLibs/arm64-v8a/libtdjson.so ]; then
+            echo "::error::libtdjson.so missing for arm64-v8a - Telegram login would be disabled in this APK"
+            exit 1
+          fi
+          size=$(stat -c%s android/app/src/main/jniLibs/arm64-v8a/libtdjson.so)
+          echo "arm64-v8a libtdjson.so = $size bytes"
+          if [ "$size" -lt 1000000 ]; then
+            echo "::error::libtdjson.so looks truncated ($size bytes)"
+            exit 1
+          fi
 
       - name: Get packages
         run: flutter pub get
@@ -98,6 +108,20 @@ jobs:
 
       - name: Build universal APK
         run: flutter build apk --release
+
+      - name: Confirm libtdjson made it into the APK
+        run: |
+          set -euo pipefail
+          apk=build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          if [ -f "$apk" ]; then
+            if unzip -l "$apk" | grep -q 'lib/arm64-v8a/libtdjson.so'; then
+              echo "libtdjson.so is inside $apk"
+            else
+              echo "::error::libtdjson.so is NOT inside $apk"
+              unzip -l "$apk" | grep 'lib/' || true
+              exit 1
+            fi
+          fi
 
       - name: Upload APKs
         uses: actions/upload-artifact@v4
