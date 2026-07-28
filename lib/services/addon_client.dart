@@ -83,29 +83,42 @@ class AddonClient {
         .toList();
   }
 
-  /// Searches one catalog using the `search` extra (single page only).
+  /// Searches one catalog using the `search` extra (first page only).
   static Future<List<MetaItem>> searchCatalog(
     Addon addon,
     AddonCatalog catalog,
     String query,
   ) {
+    return searchCatalogPage(addon, catalog, query);
+  }
+
+  /// Searches one catalog, asking for a specific page via the `skip` extra.
+  ///
+  /// Stremio catalogs return a fixed page (often 20-100 items) and expect the
+  /// client to ask for more with `skip=N`.
+  static Future<List<MetaItem>> searchCatalogPage(
+    Addon addon,
+    AddonCatalog catalog,
+    String query, {
+    int skip = 0,
+  }) {
+    final encoded = Uri.encodeComponent(query);
     return fetchCatalog(
       addon,
       catalog,
-      extraProps: 'search=${Uri.encodeComponent(query)}',
+      extraProps:
+          skip <= 0 ? 'search=$encoded' : 'search=$encoded&skip=$skip',
     );
   }
 
-  /// Searches one catalog and keeps paging with the `skip` extra until the
-  /// addon runs out of results.
+  /// Searches one catalog and keeps paging with `skip` until the addon runs
+  /// out of results.
   ///
-  /// Stremio catalogs return a fixed page (often 20-100 items) and expect the
-  /// client to ask for more with `skip=N`. Without this, only the first page
-  /// ever shows up. Paging stops when a page comes back short, empty, or
-  /// contains nothing new (which is how addons that ignore `skip` behave).
+  /// Paging stops when a page comes back short, empty, or contains nothing new
+  /// (which is how addons that ignore `skip` behave).
   ///
-  /// [onPage] is called with the items of each new page as they arrive, so the
-  /// UI can fill in progressively instead of waiting for every page.
+  /// [onPage] receives the new items of each page as they arrive so the UI can
+  /// fill in progressively.
   static Future<List<MetaItem>> searchCatalogAll(
     Addon addon,
     AddonCatalog catalog,
@@ -114,19 +127,15 @@ class AddonClient {
     int maxItems = maxSearchResults,
     void Function(List<MetaItem> newItems)? onPage,
   }) async {
-    final encoded = Uri.encodeComponent(query);
     final all = <MetaItem>[];
     final seen = <String>{};
     var skip = 0;
     int? pageSize;
 
     for (var page = 0; page < maxPages; page++) {
-      final extra =
-          skip == 0 ? 'search=$encoded' : 'search=$encoded&skip=$skip';
-
       List<MetaItem> items;
       try {
-        items = await fetchCatalog(addon, catalog, extraProps: extra);
+        items = await searchCatalogPage(addon, catalog, query, skip: skip);
       } catch (_) {
         break; // keep whatever we already have
       }

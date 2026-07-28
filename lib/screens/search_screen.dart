@@ -4,18 +4,33 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../core/responsive.dart';
+import '../models/addon.dart';
 import '../models/meta.dart';
 import '../providers/addon_provider.dart';
 import '../providers/skin_provider.dart';
 import '../services/addon_client.dart';
 import '../widgets/poster_card.dart';
+import 'search_results_screen.dart';
+
+/// One search section: the first page of results from a single addon catalog.
+class _ResultSection {
+  final Addon addon;
+  final AddonCatalog catalog;
+  final List<MetaItem> items;
+
+  const _ResultSection({
+    required this.addon,
+    required this.catalog,
+    required this.items,
+  });
+}
 
 /// Debounced search across every installed addon catalog that supports the
 /// `search` extra.
 ///
-/// Each catalog is paged through with `skip` until the addon stops returning
-/// new items, so you get the full result set instead of only the first page.
-/// Results stream in as pages arrive and are de-duplicated by type+id.
+/// Each catalog contributes its first page here (usually ~24 items). Tap the
+/// arrow on a section to open the full list, which keeps paging with `skip`
+/// as you scroll.
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
 
@@ -28,8 +43,7 @@ class _SearchScreenState extends State<SearchScreen> {
   Timer? _debounce;
   String _query = '';
   bool _loading = false;
-  bool _loadingMore = false;
-  List<MetaItem> _results = const [];
+  List<_ResultSection> _sections = const [];
   int _requestId = 0;
 
   @override
@@ -51,43 +65,31 @@ class _SearchScreenState extends State<SearchScreen> {
     setState(() {
       _query = query;
       _loading = query.isNotEmpty;
-      _loadingMore = query.isNotEmpty;
-      if (query.isEmpty) _results = const [];
+      if (query.isEmpty) _sections = const [];
     });
     if (query.isEmpty) return;
 
     final addons = context.read<AddonProvider>().addons;
-
-    final seen = <String>{};
-    final merged = <MetaItem>[];
-
-    void absorb(List<MetaItem> items) {
-      if (!mounted || id != _requestId) return;
-      var changed = false;
-      for (final item in items) {
-        if (seen.add('${item.type}:${item.id}')) {
-          merged.add(item);
-          changed = true;
-        }
-      }
-      if (!changed) return;
-      setState(() {
-        _results = List.of(merged);
-        _loading = false;
-      });
-    }
+    final sections = <_ResultSection>[];
 
     final futures = <Future<void>>[];
     for (final addon in addons) {
       for (final catalog
           in addon.manifest.catalogs.where((c) => c.supportsSearch)) {
         futures.add(
-          AddonClient.searchCatalogAll(
-            addon,
-            catalog,
-            query,
-            onPage: absorb,
-          ).then<void>((_) {}).catchError((_) {}),
+          AddonClient.searchCatalog(addon, catalog, query).then((items) {
+            if (items.isEmpty) return;
+            sections.add(_ResultSection(
+              addon: addon,
+              catalog: catalog,
+              items: items,
+            ));
+            if (!mounted || id != _requestId) return;
+            setState(() {
+              _loading = false;
+              _sections = List.of(sections);
+            });
+          }).catchError((_) {}),
         );
       }
     }
@@ -97,9 +99,21 @@ class _SearchScreenState extends State<SearchScreen> {
 
     setState(() {
       _loading = false;
-      _loadingMore = false;
-      _results = List.of(merged);
+      _sections = List.of(sections);
     });
+  }
+
+  void _openAll(_ResultSection section) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SearchResultsScreen(
+          addon: section.addon,
+          catalog: section.catalog,
+          query: _query,
+          initialItems: section.items,
+        ),
+      ),
+    );
   }
 
   @override
@@ -148,7 +162,7 @@ class _SearchScreenState extends State<SearchScreen> {
             'Search across every installed addon \u2014 movies, series and more.',
       );
     }
-    if (_results.isEmpty) {
+    if (_sections.isEmpty) {
       return _SearchHint(
         icon: Icons.search_off_rounded,
         title: 'No results for \u201c$_query\u201d',
@@ -157,56 +171,102 @@ class _SearchScreenState extends State<SearchScreen> {
     }
 
     final r = Responsive.of(context);
+    return ListView.builder(
+      padding: EdgeInsets.fromLTRB(0, 6, 0, r.bottomSafePadding),
+      itemCount: _sections.length,
+      itemBuilder: (context, index) {
+        final section = _sections[index];
+        return _SectionBlock(
+          section: section,
+          onSeeAll: () => _openAll(section),
+        );
+      },
+    );
+  }
+}
+
+class _SectionBlock extends StatelessWidget {
+  final _ResultSection section;
+  final VoidCallback onSeeAll;
+
+  const _SectionBlock({required this.section, required this.onSeeAll});
+
+  @override
+  Widget build(BuildContext context) {
+    final skin = context.skin;
+    final r = Responsive.of(context);
+
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: EdgeInsets.fromLTRB(r.gutter, 10, r.gutter, 2),
+          padding: EdgeInsets.fromLTRB(r.gutter, 14, r.gutter - 4, 6),
           child: Row(
             children: [
-              Text(
-                '${_results.length} result${_results.length == 1 ? '' : 's'}',
-                style: TextStyle(
-                  fontSize: 11.5,
-                  letterSpacing: 0.6,
-                  fontWeight: FontWeight.w700,
-                  color: skin.textSecondary,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      section.catalog.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 15.5, fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${section.addon.name} \u2022 ${section.items.length} shown',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: 11, color: skin.textSecondary),
+                    ),
+                  ],
                 ),
               ),
-              if (_loadingMore) ...[
-                const SizedBox(width: 10),
-                SizedBox(
-                  width: 12,
-                  height: 12,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 1.6, color: skin.accent),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'loading more',
-                  style: TextStyle(fontSize: 11.5, color: skin.textSecondary),
-                ),
-              ],
+              // Arrow into the full, endlessly paged list for this catalog.
+              IconButton(
+                tooltip: 'See all results',
+                onPressed: onSeeAll,
+                icon: Icon(Icons.arrow_forward_rounded,
+                    size: 20, color: skin.accent),
+              ),
             ],
           ),
         ),
-        Expanded(
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: r.gutter),
           child: GridView.builder(
-            padding: EdgeInsets.fromLTRB(
-                r.gutter, 8, r.gutter, r.bottomSafePadding),
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: EdgeInsets.zero,
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: r.gridColumns,
               mainAxisSpacing: 14,
               crossAxisSpacing: 10,
               childAspectRatio: 2 / 3.35,
             ),
-            itemCount: _results.length,
+            itemCount: section.items.length,
             itemBuilder: (context, index) => PosterCard(
-              item: _results[index],
+              item: section.items[index],
               width: double.infinity,
               showTitle: true,
             ),
           ),
         ),
+        Padding(
+          padding: EdgeInsets.fromLTRB(r.gutter, 12, r.gutter, 4),
+          child: SizedBox(
+            width: double.infinity,
+            child: TextButton.icon(
+              onPressed: onSeeAll,
+              icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+              label: Text('See all results from ${section.catalog.name}'),
+            ),
+          ),
+        ),
+        Divider(color: skin.stroke, height: 24),
       ],
     );
   }
