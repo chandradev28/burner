@@ -1,5 +1,5 @@
 # Touch this file to start a build.
 # Ordinary code pushes do not trigger CI; only changes to this file do.
-build: 2
-reason: Paged addon search + See all results page
-requested: 2026-07-28 14:03 IST
+build: 3
+reason: Player redirect resolution, header/HLS retry passes, real error reporting
+requested: 2026-07-28 19:16 IST
