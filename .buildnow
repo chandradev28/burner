@@ -1,5 +1,5 @@
 # Touch this file to start a build.
 # Ordinary code pushes do not trigger CI; only changes to this file do.
-build: 3
-reason: Player redirect resolution, header/HLS retry passes, real error reporting
-requested: 2026-07-28 19:16 IST
+build: 4
+reason: Prebuilt TDLib libtdjson.so bundled + verified (Telegram login must ship)
+requested: 2026-07-28 20:20 IST
