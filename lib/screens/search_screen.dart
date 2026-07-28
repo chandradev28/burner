@@ -245,4 +245,3 @@ class _SearchHint extends StatelessWidget {
     );
   }
 }
-</file>
