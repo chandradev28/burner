@@ -10,8 +10,12 @@ import '../providers/skin_provider.dart';
 import '../services/addon_client.dart';
 import '../widgets/poster_card.dart';
 
-/// Debounced search across every installed addon catalog that
-/// supports the `search` extra. Results are de-duplicated by type+id.
+/// Debounced search across every installed addon catalog that supports the
+/// `search` extra.
+///
+/// Each catalog is paged through with `skip` until the addon stops returning
+/// new items, so you get the full result set instead of only the first page.
+/// Results stream in as pages arrive and are de-duplicated by type+id.
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
 
@@ -24,6 +28,7 @@ class _SearchScreenState extends State<SearchScreen> {
   Timer? _debounce;
   String _query = '';
   bool _loading = false;
+  bool _loadingMore = false;
   List<MetaItem> _results = const [];
   int _requestId = 0;
 
@@ -46,34 +51,54 @@ class _SearchScreenState extends State<SearchScreen> {
     setState(() {
       _query = query;
       _loading = query.isNotEmpty;
+      _loadingMore = query.isNotEmpty;
       if (query.isEmpty) _results = const [];
     });
     if (query.isEmpty) return;
 
     final addons = context.read<AddonProvider>().addons;
-    final futures = <Future<List<MetaItem>>>[];
+
+    final seen = <String>{};
+    final merged = <MetaItem>[];
+
+    void absorb(List<MetaItem> items) {
+      if (!mounted || id != _requestId) return;
+      var changed = false;
+      for (final item in items) {
+        if (seen.add('${item.type}:${item.id}')) {
+          merged.add(item);
+          changed = true;
+        }
+      }
+      if (!changed) return;
+      setState(() {
+        _results = List.of(merged);
+        _loading = false;
+      });
+    }
+
+    final futures = <Future<void>>[];
     for (final addon in addons) {
       for (final catalog
           in addon.manifest.catalogs.where((c) => c.supportsSearch)) {
         futures.add(
-          AddonClient.searchCatalog(addon, catalog, query)
-              .catchError((_) => <MetaItem>[]),
+          AddonClient.searchCatalogAll(
+            addon,
+            catalog,
+            query,
+            onPage: absorb,
+          ).then<void>((_) {}).catchError((_) {}),
         );
       }
     }
-    final lists = await Future.wait(futures);
-    if (!mounted || id != _requestId) return; // stale response
 
-    final seen = <String>{};
-    final merged = <MetaItem>[];
-    for (final list in lists) {
-      for (final item in list) {
-        if (seen.add('${item.type}:${item.id}')) merged.add(item);
-      }
-    }
+    await Future.wait(futures);
+    if (!mounted || id != _requestId) return;
+
     setState(() {
       _loading = false;
-      _results = merged;
+      _loadingMore = false;
+      _results = List.of(merged);
     });
   }
 
@@ -130,21 +155,59 @@ class _SearchScreenState extends State<SearchScreen> {
         subtitle: 'Try a different title or install more addons.',
       );
     }
+
     final r = Responsive.of(context);
-    return GridView.builder(
-      padding: EdgeInsets.fromLTRB(r.gutter, 12, r.gutter, r.bottomSafePadding),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: r.gridColumns,
-        mainAxisSpacing: 14,
-        crossAxisSpacing: 10,
-        childAspectRatio: 2 / 3.35,
-      ),
-      itemCount: _results.length,
-      itemBuilder: (context, index) => PosterCard(
-        item: _results[index],
-        width: double.infinity,
-        showTitle: true,
-      ),
+    return Column(
+      children: [
+        Padding(
+          padding: EdgeInsets.fromLTRB(r.gutter, 10, r.gutter, 2),
+          child: Row(
+            children: [
+              Text(
+                '${_results.length} result${_results.length == 1 ? '' : 's'}',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  letterSpacing: 0.6,
+                  fontWeight: FontWeight.w700,
+                  color: skin.textSecondary,
+                ),
+              ),
+              if (_loadingMore) ...[
+                const SizedBox(width: 10),
+                SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 1.6, color: skin.accent),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'loading more',
+                  style: TextStyle(fontSize: 11.5, color: skin.textSecondary),
+                ),
+              ],
+            ],
+          ),
+        ),
+        Expanded(
+          child: GridView.builder(
+            padding: EdgeInsets.fromLTRB(
+                r.gutter, 8, r.gutter, r.bottomSafePadding),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: r.gridColumns,
+              mainAxisSpacing: 14,
+              crossAxisSpacing: 10,
+              childAspectRatio: 2 / 3.35,
+            ),
+            itemCount: _results.length,
+            itemBuilder: (context, index) => PosterCard(
+              item: _results[index],
+              width: double.infinity,
+              showTitle: true,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -182,3 +245,4 @@ class _SearchHint extends StatelessWidget {
     );
   }
 }
+</file>

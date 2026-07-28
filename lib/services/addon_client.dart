@@ -17,6 +17,10 @@ class AddonClient {
 
   static const Duration _timeout = Duration(seconds: 20);
 
+  /// Safety rails for paged search so a broken addon cannot loop forever.
+  static const int maxSearchPages = 12;
+  static const int maxSearchResults = 600;
+
   static Future<Map<String, dynamic>> _getJson(String url) async {
     final response =
         await http.get(Uri.parse(url), headers: {'Accept': 'application/json'})
@@ -79,7 +83,7 @@ class AddonClient {
         .toList();
   }
 
-  /// Searches one catalog using the `search` extra.
+  /// Searches one catalog using the `search` extra (single page only).
   static Future<List<MetaItem>> searchCatalog(
     Addon addon,
     AddonCatalog catalog,
@@ -90,6 +94,61 @@ class AddonClient {
       catalog,
       extraProps: 'search=${Uri.encodeComponent(query)}',
     );
+  }
+
+  /// Searches one catalog and keeps paging with the `skip` extra until the
+  /// addon runs out of results.
+  ///
+  /// Stremio catalogs return a fixed page (often 20-100 items) and expect the
+  /// client to ask for more with `skip=N`. Without this, only the first page
+  /// ever shows up. Paging stops when a page comes back short, empty, or
+  /// contains nothing new (which is how addons that ignore `skip` behave).
+  ///
+  /// [onPage] is called with the items of each new page as they arrive, so the
+  /// UI can fill in progressively instead of waiting for every page.
+  static Future<List<MetaItem>> searchCatalogAll(
+    Addon addon,
+    AddonCatalog catalog,
+    String query, {
+    int maxPages = maxSearchPages,
+    int maxItems = maxSearchResults,
+    void Function(List<MetaItem> newItems)? onPage,
+  }) async {
+    final encoded = Uri.encodeComponent(query);
+    final all = <MetaItem>[];
+    final seen = <String>{};
+    var skip = 0;
+    int? pageSize;
+
+    for (var page = 0; page < maxPages; page++) {
+      final extra =
+          skip == 0 ? 'search=$encoded' : 'search=$encoded&skip=$skip';
+
+      List<MetaItem> items;
+      try {
+        items = await fetchCatalog(addon, catalog, extraProps: extra);
+      } catch (_) {
+        break; // keep whatever we already have
+      }
+      if (items.isEmpty) break;
+
+      final fresh = <MetaItem>[];
+      for (final item in items) {
+        if (seen.add('${item.type}:${item.id}')) fresh.add(item);
+      }
+      if (fresh.isEmpty) break; // addon ignored skip and repeated itself
+
+      all.addAll(fresh);
+      onPage?.call(fresh);
+
+      pageSize ??= items.length;
+      if (items.length < pageSize) break; // short page means the end
+      if (all.length >= maxItems) break;
+
+      skip += items.length;
+    }
+
+    return all.length > maxItems ? all.sublist(0, maxItems) : all;
   }
 
   /// Fetches full metadata for an item from one addon.
